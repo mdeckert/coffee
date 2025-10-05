@@ -133,12 +133,12 @@ def run_roast_session():
     # Display target settings
     if is_decaf:
         print("🎯 TARGET SETTINGS (DECAF):")
-        print("   Load temp: 93°C, Power: 80")
-        print("   At FC end: Power 30, Fan 90")
+        print("   Load: 200°C, Power: 80, Fan: 60")
+        print("   FC end (~186°C): Power: 30, Fan: 90")
     else:
         print("🎯 TARGET SETTINGS (REGULAR):")
-        print("   Load temp: 102°C, Power: 85")
-        print("   At FC end: Power 35, Fan 85")
+        print("   Load: 215°C, Power: 85, Fan: 60")
+        print("   FC end (~194°C): Power: 35, Fan: 85")
     print()
 
     # Control points
@@ -205,9 +205,9 @@ def run_roast_session():
 
     # Show power/fan adjustment reminder for FC end
     if is_decaf:
-        print("\n⚡ At FC end: Power 30, Fan 90")
+        print("\n⚡ At FC end (~186°C): Power: 30, Fan: 90")
     else:
-        print("\n⚡ At FC end: Power 35, Fan 85")
+        print("\n⚡ At FC end (~194°C): Power: 35, Fan: 85")
 
     # Continue timer until first crack ENDS
     print("\nWhen FIRST CRACK ENDS, press ENTER...\n")
