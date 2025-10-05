@@ -18,6 +18,7 @@ def initialize_log():
             writer = csv.writer(f)
             writer.writerow([
                 'Date', 'Time', 'Bean Origin', 'Decaf', 'Batch Size (lbs)',
+                'Loading Temp', 'Turnaround Temp', 'Early Notes',
                 'Yellow Time', 'First Crack Start Time', 'First Crack Start Temp',
                 'First Crack End Time', 'First Crack End Temp',
                 'Second Crack Time', 'Second Crack Temp', 'End Time', 'End Temp',
@@ -62,6 +63,8 @@ class RoastSession:
         self.target_level = target_level
 
         self.start_time = None
+        self.loading_temp = None
+        self.turnaround_temp = None
         self.yellow_time = None
         self.fc_start_time = None
         self.fc_start_temp = None
@@ -72,6 +75,7 @@ class RoastSession:
         self.end_time = None
         self.end_temp = None
         self.drop_temp = None
+        self.early_notes = None
 
     def elapsed(self):
         """Get elapsed time in seconds"""
@@ -109,11 +113,11 @@ def run_roast_session():
     print("\n=== COFFEE ROAST SESSION ===\n")
 
     # Pre-roast reminders
-    beep(2)
     print("⚠️  PRE-ROAST CHECKLIST:")
     print("   □ Empty the chaff collector")
     print("   □ Turn OFF cooling mode")
     print("   □ Close the roast chamber")
+    beep(1)
     print()
     input("Press ENTER when ready to continue...")
     print()
@@ -138,9 +142,6 @@ def run_roast_session():
     # Run timer with milestone checks
     last_milestone = 0
     milestones = get_milestones(is_decaf)
-
-    print("When FIRST CRACK STARTS, press ENTER...")
-    print()
 
     # Create a background timer thread
     import threading
@@ -168,18 +169,29 @@ def run_roast_session():
     timer_thread = threading.Thread(target=run_timer, daemon=True)
     timer_thread.start()
 
+    # Collect early data while timer runs
+    print("Enter data while waiting for first crack:")
+    session.loading_temp = input("Loading temp (°F): ").strip()
+    session.turnaround_temp = input("Turnaround temp (°F): ").strip()
+    session.early_notes = input("Early notes (optional): ").strip()
+
+    print("\nWhen FIRST CRACK STARTS, press ENTER...")
+
     # Wait for first crack START
     input()  # User presses ENTER at first crack start
+
+    # Mark the time immediately
+    session.fc_start_time = session.elapsed()
+
     stop_timer.set()
     timer_thread.join(timeout=0.5)
 
     # First crack START control point
-    elapsed = session.elapsed()
     clear_line()
-    print(f"\n⏱  First Crack STARTED at {format_time(elapsed)}")
+    print(f"\n⏱  First Crack STARTED at {format_time(session.fc_start_time)}")
 
     fc_start_temp = input("Temperature at first crack start (°F): ").strip()
-    session.mark_first_crack_start(fc_start_temp)
+    session.fc_start_temp = fc_start_temp
 
     print("\n🔊 FIRST CRACK STARTED")
     beep(1)
@@ -202,16 +214,19 @@ def run_roast_session():
 
     # Wait for first crack END
     input()  # User presses ENTER when first crack ends
+
+    # Mark the time immediately
+    session.fc_end_time = session.elapsed()
+
     stop_timer.set()
     fc_timer_thread.join(timeout=0.5)
 
     # First crack END control point
-    elapsed = session.elapsed()
     clear_line()
-    print(f"\n⏱  First Crack ENDED at {format_time(elapsed)}")
+    print(f"\n⏱  First Crack ENDED at {format_time(session.fc_end_time)}")
 
     fc_end_temp = input("Temperature at first crack end (°F): ").strip()
-    session.mark_first_crack_end(fc_end_temp)
+    session.fc_end_temp = fc_end_temp
 
     print("\n🔊 FIRST CRACK ENDED - Development phase")
     beep(1)
@@ -313,6 +328,9 @@ def save_roast(session, actual_color, notes):
             session.bean_origin,
             'Yes' if session.is_decaf else 'No',
             session.batch_size,
+            session.loading_temp or '',
+            session.turnaround_temp or '',
+            session.early_notes or '',
             yellow_time,
             fc_start_time,
             session.fc_start_temp or '',
