@@ -21,9 +21,9 @@ def initialize_log():
                 'Loading Temp', 'Turnaround Temp', 'Early Notes',
                 'Yellow Time', 'First Crack Start Time', 'First Crack Start Temp',
                 'First Crack End Time', 'First Crack End Temp',
-                'Second Crack Time', 'Second Crack Temp', 'End Time', 'End Temp',
+                'Second Crack Start Time', 'Second Crack Start Temp', 'End Time', 'End Temp',
                 'Drop Temp', 'Total Roast Time (min)', 'Target Roast Level',
-                'Actual Color', 'Notes', 'Tasting Notes (added later)'
+                'Roast Level (1-10)', 'Notes', 'Tasting Notes (added later)'
             ])
 
 def format_time(seconds):
@@ -67,8 +67,8 @@ class RoastSession:
         self.fc_start_temp = None
         self.fc_end_time = None
         self.fc_end_temp = None
-        self.sc_time = None
-        self.sc_temp = None
+        self.sc_start_time = None
+        self.sc_start_temp = None
         self.end_time = None
         self.end_temp = None
         self.drop_temp = None
@@ -94,10 +94,10 @@ class RoastSession:
         self.fc_end_time = self.elapsed()
         self.fc_end_temp = temp
 
-    def mark_second_crack(self, temp):
-        """Mark second crack"""
-        self.sc_time = self.elapsed()
-        self.sc_temp = temp
+    def mark_second_crack_start(self, temp):
+        """Mark second crack start"""
+        self.sc_start_time = self.elapsed()
+        self.sc_start_temp = temp
 
     def mark_end(self, end_temp, drop_temp):
         """Mark end of roast"""
@@ -270,12 +270,27 @@ def run_roast_session():
     dev_timer_thread.join(timeout=0.5)
 
     # Drop beans control point
-    elapsed = session.elapsed()
+    session.end_time = session.elapsed()
     clear_line()
-    print(f"\n⏱  Beans dropped at {format_time(elapsed)}")
+    print(f"\n⏱  Beans dropped at {format_time(session.end_time)}")
 
     end_temp = input("End temperature (°F): ").strip()
-    session.mark_end(end_temp, None)
+    drop_temp = input("Drop/cooling tray temp (°F): ").strip()
+    sc_start = input("Second crack start time (mm:ss, or Enter if none): ").strip()
+    sc_start_temp = ""
+    if sc_start:
+        sc_start_temp = input("Second crack start temp (°F): ").strip()
+        # Parse and store second crack timing
+        try:
+            parts = sc_start.split(':')
+            sc_seconds = int(parts[0]) * 60 + int(parts[1])
+            session.sc_start_time = sc_seconds
+            session.sc_start_temp = sc_start_temp
+        except:
+            pass
+
+    session.end_temp = end_temp
+    session.drop_temp = drop_temp
 
     print("\n✓ ROAST COMPLETE!")
     beep('Funk')
@@ -298,11 +313,12 @@ def run_roast_session():
 
     # Get additional notes
     print("\n")
-    actual_color = input("Actual roast color/result: ").strip()
+    print("Roast level (1=too light, 5=perfect, 10=burnt):")
+    roast_level = input("Rating (1-10): ").strip()
     notes = input("Notes (weather, adjustments, observations): ").strip()
 
     # Save to log
-    save_roast(session, actual_color, notes)
+    save_roast(session, roast_level, notes)
 
     print("\n✓ Roast logged successfully!")
     print(f"Data saved to {ROAST_LOG_FILE}\n")
@@ -324,7 +340,7 @@ def get_milestones(is_decaf):
             (600, "10:00 - Listen for 2nd crack! Check sample port for color/oil"),
         ]
 
-def save_roast(session, actual_color, notes):
+def save_roast(session, roast_level, notes):
     """Save roast to CSV log"""
     initialize_log()
 
@@ -336,7 +352,7 @@ def save_roast(session, actual_color, notes):
         yellow_time = format_time(session.yellow_time) if session.yellow_time else ""
         fc_start_time = format_time(session.fc_start_time) if session.fc_start_time else ""
         fc_end_time = format_time(session.fc_end_time) if session.fc_end_time else ""
-        sc_time = format_time(session.sc_time) if session.sc_time else ""
+        sc_start_time = format_time(session.sc_start_time) if session.sc_start_time else ""
         end_time = format_time(session.end_time) if session.end_time else ""
         total_time = f"{session.end_time/60:.1f}" if session.end_time else ""
 
@@ -354,14 +370,14 @@ def save_roast(session, actual_color, notes):
             session.fc_start_temp or '',
             fc_end_time,
             session.fc_end_temp or '',
-            sc_time,
-            session.sc_temp or '',
+            sc_start_time,
+            session.sc_start_temp or '',
             end_time,
             session.end_temp or '',
             session.drop_temp or '',
             total_time,
             session.target_level,
-            actual_color,
+            roast_level,
             notes,
             ''  # Tasting notes placeholder
         ])
