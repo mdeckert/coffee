@@ -133,6 +133,17 @@ def run_roast_session():
     print(f"\n{bean_origin} {'DECAF' if is_decaf else 'REGULAR'} - {batch_size} lb")
     print(f"Target: {target_level}\n")
 
+    # Display target settings
+    if is_decaf:
+        print("🎯 TARGET SETTINGS (DECAF):")
+        print("   Load temp: 200°F, Power: 80")
+        print("   At FC end: Power 30, Fan 90")
+    else:
+        print("🎯 TARGET SETTINGS (REGULAR):")
+        print("   Load temp: 215°F, Power: 85")
+        print("   At FC end: Power 35, Fan 85")
+    print()
+
     # Control points
     input("Press ENTER when you LOAD THE BEANS and start the roast...")
     session.start_time = time.time()
@@ -195,8 +206,14 @@ def run_roast_session():
     print("\n🔊 FIRST CRACK STARTED")
     beep(1)
 
+    # Show power/fan adjustment reminder for FC end
+    if is_decaf:
+        print("\n⚡ At FC end: Power 30, Fan 90")
+    else:
+        print("\n⚡ At FC end: Power 35, Fan 85")
+
     # Continue timer until first crack ENDS
-    print("\nWhen FIRST CRACK ENDS (lower temp now), press ENTER...\n")
+    print("\nWhen FIRST CRACK ENDS, press ENTER...\n")
     time.sleep(1)
 
     stop_timer.clear()
