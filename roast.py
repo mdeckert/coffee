@@ -133,11 +133,11 @@ def run_roast_session():
     # Display target settings
     if is_decaf:
         print("🎯 TARGET SETTINGS (DECAF):")
-        print("   Load temp: 200°F, Power: 80")
+        print("   Load temp: 93°C, Power: 80")
         print("   At FC end: Power 30, Fan 90")
     else:
         print("🎯 TARGET SETTINGS (REGULAR):")
-        print("   Load temp: 215°F, Power: 85")
+        print("   Load temp: 102°C, Power: 85")
         print("   At FC end: Power 35, Fan 85")
     print()
 
@@ -148,8 +148,8 @@ def run_roast_session():
     print("\n🔥 ROAST STARTED! (Timer running in background)\n")
 
     # Collect data right after loading (timer keeps running, just not displaying)
-    session.loading_temp = input("Loading temp (°F): ").strip()
-    session.turnaround_temp = input("Turnaround temp (°F): ").strip()
+    session.loading_temp = input("Loading temp (°C): ").strip()
+    session.turnaround_temp = input("Turnaround temp (°C): ").strip()
     session.early_notes = input("Early notes (optional): ").strip()
 
     print("\nPress ENTER when FIRST CRACK STARTS...")
@@ -197,7 +197,7 @@ def run_roast_session():
     clear_line()
     print(f"\n⏱  First Crack STARTED at {format_time(session.fc_start_time)}")
 
-    fc_start_temp = input("Temperature at first crack start (°F): ").strip()
+    fc_start_temp = input("Temperature at first crack start (°C): ").strip()
     session.fc_start_temp = fc_start_temp
 
     print("\n🔊 FIRST CRACK STARTED")
@@ -238,7 +238,7 @@ def run_roast_session():
     clear_line()
     print(f"\n⏱  First Crack ENDED at {format_time(session.fc_end_time)}")
 
-    fc_end_temp = input("Temperature at first crack end (°F): ").strip()
+    fc_end_temp = input("Temperature at first crack end (°C): ").strip()
     session.fc_end_temp = fc_end_temp
 
     print("\n🔊 FIRST CRACK ENDED - Development phase")
@@ -274,12 +274,12 @@ def run_roast_session():
     clear_line()
     print(f"\n⏱  Beans dropped at {format_time(session.end_time)}")
 
-    end_temp = input("End temperature (°F): ").strip()
-    drop_temp = input("Drop/cooling tray temp (°F): ").strip()
+    end_temp = input("End temperature (°C): ").strip()
+    drop_temp = input("Drop/cooling tray temp (°C): ").strip()
     sc_start = input("Second crack start time (mm:ss, or Enter if none): ").strip()
     sc_start_temp = ""
     if sc_start:
-        sc_start_temp = input("Second crack start temp (°F): ").strip()
+        sc_start_temp = input("Second crack start temp (°C): ").strip()
         # Parse and store second crack timing
         try:
             parts = sc_start.split(':')
@@ -297,15 +297,15 @@ def run_roast_session():
 
     # Summary
     print(f"\n=== ROAST SUMMARY ===")
-    print(f"First Crack Start: {format_time(session.fc_start_time)} @ {session.fc_start_temp}°F")
-    print(f"First Crack End: {format_time(session.fc_end_time)} @ {session.fc_end_temp}°F")
+    print(f"First Crack Start: {format_time(session.fc_start_time)} @ {session.fc_start_temp}°C")
+    print(f"First Crack End: {format_time(session.fc_end_time)} @ {session.fc_end_temp}°C")
 
     if session.fc_start_time and session.fc_end_time:
         fc_duration = session.fc_end_time - session.fc_start_time
         print(f"First Crack Duration: {format_time(fc_duration)}")
 
     print(f"Total Time: {format_time(session.end_time)} ({session.end_time/60:.1f} min)")
-    print(f"End Temp: {session.end_temp}°F")
+    print(f"End Temp: {session.end_temp}°C")
 
     if session.fc_end_time and session.end_time:
         dev_time = session.end_time - session.fc_end_time
@@ -401,8 +401,8 @@ def view_recent_roasts(n=5):
 
     for row in recent:
         print(f"Date: {row[0]} {row[1]} | {row[2]} {'(DECAF)' if row[3]=='Yes' else ''}")
-        print(f"  First Crack: {row[6]} @ {row[7]}°F")
-        print(f"  End: {row[10]} @ {row[11]}°F (drop {row[12]}°F)")
+        print(f"  First Crack: {row[6]} @ {row[7]}°C")
+        print(f"  End: {row[10]} @ {row[11]}°C (drop {row[12]}°C)")
         print(f"  Total: {row[13]} min | Level: {row[14]} → {row[15]}")
         if row[16]:
             print(f"  Notes: {row[16]}")
