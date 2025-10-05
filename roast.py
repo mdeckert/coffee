@@ -148,6 +148,41 @@ def get_fc_midpoint_temp(is_decaf):
     except:
         return 186 if is_decaf else 192
 
+def get_fc_approaching_time(is_decaf):
+    """Calculate when to alert for approaching FC (45s before avg FC start)"""
+    if not os.path.exists(ROAST_LOG_FILE):
+        # Default values if no history
+        return 435 if is_decaf else 495  # 7:15 for decaf, 8:15 for regular
+
+    try:
+        with open(ROAST_LOG_FILE, 'r') as f:
+            reader = csv.DictReader(f)
+            rows = [r for r in reader if r.get('Decaf', '').lower() == ('yes' if is_decaf else 'no')]
+
+            if not rows:
+                return 435 if is_decaf else 495
+
+            # Get FC start times from recent roasts
+            fc_start_times = []
+            for r in rows[-5:]:  # Last 5 roasts of this type
+                fc_start_time = r.get('First Crack Start Time') or r.get('First Crack Time', '')
+                if fc_start_time and ':' in fc_start_time:
+                    try:
+                        parts = fc_start_time.split(':')
+                        seconds = int(parts[0]) * 60 + int(parts[1])
+                        fc_start_times.append(seconds)
+                    except:
+                        pass
+
+            if fc_start_times:
+                avg_fc_start = sum(fc_start_times) / len(fc_start_times)
+                # 45 seconds before average
+                return int(avg_fc_start - 45)
+            else:
+                return 435 if is_decaf else 495
+    except:
+        return 435 if is_decaf else 495
+
 def run_roast_session():
     """Run an interactive roast session"""
     print("\n=== COFFEE ROAST SESSION ===\n")
@@ -399,19 +434,19 @@ def run_roast_session():
     print(f"Data saved to {ROAST_LOG_FILE}\n")
 
 def get_milestones(is_decaf):
-    """Get time milestones based on bean type"""
+    """Get time milestones based on bean type and historical data"""
+    fc_approaching = get_fc_approaching_time(is_decaf)
+
     if is_decaf:
         return [
             (270, "4:30 - Yellowing phase checkpoint"),
-            (360, "6:00 - Approaching first crack zone (decaf)"),
-            (480, "8:00 - Listen for first crack!"),
+            (fc_approaching, f"{format_time(fc_approaching)} - Approaching first crack zone!"),
             (600, "10:00 - Listen for 2nd crack! Check sample port for color/oil"),
         ]
     else:
         return [
             (330, "5:30 - Yellowing should be complete"),
-            (480, "8:00 - Approaching first crack zone"),
-            (540, "9:00 - Listen for first crack!"),
+            (fc_approaching, f"{format_time(fc_approaching)} - Approaching first crack zone!"),
             (600, "10:00 - Listen for 2nd crack! Check sample port for color/oil"),
         ]
 
