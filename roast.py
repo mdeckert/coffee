@@ -32,16 +32,13 @@ def format_time(seconds):
     secs = int(seconds % 60)
     return f"{mins:02d}:{secs:02d}"
 
-def beep(count=1):
-    """Make alert sound"""
+def beep(sound='Ping'):
+    """Make alert sound with different sounds for different phases"""
     import subprocess
-    for _ in range(count):
-        # Use macOS system sound
-        subprocess.run(['afplay', '/System/Library/Sounds/Ping.aiff'],
-                      stdout=subprocess.DEVNULL,
-                      stderr=subprocess.DEVNULL)
-        if count > 1:
-            time.sleep(0.3)
+    # Use macOS system sound
+    subprocess.run(['afplay', f'/System/Library/Sounds/{sound}.aiff'],
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL)
 
 def clear_line():
     """Clear current line"""
@@ -117,7 +114,7 @@ def run_roast_session():
     print("   □ Empty the chaff collector")
     print("   □ Turn OFF cooling mode")
     print("   □ Close the roast chamber")
-    beep(1)
+    beep('Tink')
     print()
     input("Press ENTER when ready to continue...")
     print()
@@ -147,7 +144,7 @@ def run_roast_session():
     # Control points
     input("Press ENTER when you LOAD THE BEANS and start the roast...")
     session.start_time = time.time()
-    beep(1)
+    beep('Hero')
     print("\n🔥 ROAST STARTED! (Timer running in background)\n")
 
     # Collect data right after loading (timer keeps running, just not displaying)
@@ -176,7 +173,7 @@ def run_roast_session():
             for milestone_time, message in milestones:
                 if elapsed >= milestone_time and last_milestone < milestone_time:
                     display_timer(elapsed, message)
-                    beep(2)
+                    beep('Ping')
                     last_milestone = milestone_time
                     time.sleep(1)
 
@@ -204,7 +201,7 @@ def run_roast_session():
     session.fc_start_temp = fc_start_temp
 
     print("\n🔊 FIRST CRACK STARTED")
-    beep(1)
+    beep('Glass')
 
     # Show power/fan adjustment reminder for FC end
     if is_decaf:
@@ -245,11 +242,11 @@ def run_roast_session():
     session.fc_end_temp = fc_end_temp
 
     print("\n🔊 FIRST CRACK ENDED - Development phase")
-    beep(1)
+    beep('Bottle')
 
     # Reminder to handle prior roast
     print("\n⚠️  REMINDER: Take care of prior roast beans now!")
-    beep(2)
+    beep('Purr')
 
     # Continue timer for development
     print("\nWhen you DROP THE BEANS, press ENTER...\n")
@@ -281,7 +278,7 @@ def run_roast_session():
     session.mark_end(end_temp, None)
 
     print("\n✓ ROAST COMPLETE!")
-    beep(3)
+    beep('Funk')
 
     # Summary
     print(f"\n=== ROAST SUMMARY ===")
