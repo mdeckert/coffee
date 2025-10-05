@@ -231,6 +231,10 @@ def run_roast_session():
     print("\n🔊 FIRST CRACK ENDED - Development phase")
     beep(1)
 
+    # Reminder to handle prior roast
+    print("\n⚠️  REMINDER: Take care of prior roast beans now!")
+    beep(2)
+
     # Continue timer for development
     print("\nWhen you DROP THE BEANS, press ENTER...\n")
     time.sleep(1)
@@ -258,8 +262,7 @@ def run_roast_session():
     print(f"\n⏱  Beans dropped at {format_time(elapsed)}")
 
     end_temp = input("End temperature (°F): ").strip()
-    drop_temp = input("Drop/cooling tray temp (°F, or Enter to skip): ").strip()
-    session.mark_end(end_temp, drop_temp)
+    session.mark_end(end_temp, None)
 
     print("\n✓ ROAST COMPLETE!")
     beep(3)
