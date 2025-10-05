@@ -300,12 +300,14 @@ def get_milestones(is_decaf):
             (270, "4:30 - Yellowing phase checkpoint"),
             (360, "6:00 - Approaching first crack zone (decaf)"),
             (480, "8:00 - Listen for first crack!"),
+            (600, "10:00 - Listen for 2nd crack! Check sample port for color/oil"),
         ]
     else:
         return [
             (330, "5:30 - Yellowing should be complete"),
             (480, "8:00 - Approaching first crack zone"),
             (540, "9:00 - Listen for first crack!"),
+            (600, "10:00 - Listen for 2nd crack! Check sample port for color/oil"),
         ]
 
 def save_roast(session, actual_color, notes):
