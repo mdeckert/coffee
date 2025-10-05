@@ -248,8 +248,8 @@ def run_roast_session():
     print("\n⚠️  REMINDER: Take care of prior roast beans now!")
     beep('Purr')
 
-    # Continue timer for development
-    print("\nWhen you DROP THE BEANS, press ENTER...\n")
+    # Continue timer for development - wait for either second crack or drop
+    print("\nPress ENTER at SECOND CRACK START (or just drop beans if no 2nd crack)...\n")
     time.sleep(1)
 
     stop_timer.clear()
@@ -264,30 +264,59 @@ def run_roast_session():
     dev_timer_thread = threading.Thread(target=run_dev_timer, daemon=True)
     dev_timer_thread.start()
 
-    # Wait for drop
-    input()  # User presses ENTER when dropping beans
+    # Wait for second crack or drop
+    input()  # User presses ENTER
+
+    # Mark the time immediately
+    event_time = session.elapsed()
+
     stop_timer.set()
     dev_timer_thread.join(timeout=0.5)
-
-    # Drop beans control point
-    session.end_time = session.elapsed()
     clear_line()
-    print(f"\n⏱  Beans dropped at {format_time(session.end_time)}")
 
+    # Ask if this was second crack or drop
+    print(f"\n⏱  Event at {format_time(event_time)}")
+    was_second_crack = input("Was this SECOND CRACK? (y/n, default: n): ").strip().lower() == 'y'
+
+    if was_second_crack:
+        # Second crack control point
+        print("\n🔊 SECOND CRACK STARTED")
+        sc_temp = input("Temperature at second crack start (°C): ").strip()
+        session.sc_start_time = event_time
+        session.sc_start_temp = sc_temp
+        beep('Pop')
+
+        # Continue to drop
+        print("\nWhen you DROP THE BEANS, press ENTER...\n")
+        time.sleep(1)
+
+        stop_timer.clear()
+
+        def run_final_timer():
+            while not stop_timer.is_set():
+                elapsed = session.elapsed()
+                sc_time = elapsed - session.sc_start_time
+                display_timer(elapsed, f"After 2nd crack: {format_time(sc_time)}")
+                time.sleep(0.1)
+
+        final_timer_thread = threading.Thread(target=run_final_timer, daemon=True)
+        final_timer_thread.start()
+
+        # Wait for drop
+        input()
+        session.end_time = session.elapsed()
+        stop_timer.set()
+        final_timer_thread.join(timeout=0.5)
+        clear_line()
+        print(f"\n⏱  Beans dropped at {format_time(session.end_time)}")
+    else:
+        # This was the drop
+        session.end_time = event_time
+        print(f"\n⏱  Beans dropped at {format_time(session.end_time)}")
+
+    # Get temps
     end_temp = input("End temperature (°C): ").strip()
     drop_temp = input("Drop/cooling tray temp (°C): ").strip()
-    sc_start = input("Second crack start time (mm:ss, or Enter if none): ").strip()
-    sc_start_temp = ""
-    if sc_start:
-        sc_start_temp = input("Second crack start temp (°C): ").strip()
-        # Parse and store second crack timing
-        try:
-            parts = sc_start.split(':')
-            sc_seconds = int(parts[0]) * 60 + int(parts[1])
-            session.sc_start_time = sc_seconds
-            session.sc_start_temp = sc_start_temp
-        except:
-            pass
 
     session.end_temp = end_temp
     session.drop_temp = drop_temp
