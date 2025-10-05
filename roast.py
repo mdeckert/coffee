@@ -297,13 +297,13 @@ def get_milestones(is_decaf):
     """Get time milestones based on bean type"""
     if is_decaf:
         return [
-            (240, "4:00 - Yellowing phase checkpoint"),
+            (270, "4:30 - Yellowing phase checkpoint"),
             (360, "6:00 - Approaching first crack zone (decaf)"),
             (480, "8:00 - Listen for first crack!"),
         ]
     else:
         return [
-            (300, "5:00 - Yellowing should be complete"),
+            (330, "5:30 - Yellowing should be complete"),
             (480, "8:00 - Approaching first crack zone"),
             (540, "9:00 - Listen for first crack!"),
         ]
