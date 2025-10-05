@@ -19,10 +19,10 @@ def initialize_log():
             writer.writerow([
                 'Date', 'Time', 'Bean Origin', 'Decaf', 'Batch Size (lbs)',
                 'Loading Temp', 'Turnaround Temp', 'Early Notes',
-                'Yellow Time', 'First Crack Start Time', 'First Crack Start Temp',
-                'First Crack End Time', 'First Crack End Temp',
-                'Second Crack Start Time', 'Second Crack Start Temp', 'End Time', 'End Temp',
-                'Drop Temp', 'Total Roast Time (min)', 'Target Roast Level',
+                'Yellow Time', 'First Crack Start Time', 'First Crack Start Temp', 'FC Start ROR',
+                'First Crack End Time', 'First Crack End Temp', 'FC End ROR',
+                'Second Crack Start Time', 'Second Crack Start Temp', 'SC Start ROR',
+                'End Time', 'End Temp', 'Drop Temp', 'Total Roast Time (min)', 'Target Roast Level',
                 'Roast Level (1-10)', 'Notes', 'Tasting Notes (added later)'
             ])
 
@@ -31,6 +31,22 @@ def format_time(seconds):
     mins = int(seconds // 60)
     secs = int(seconds % 60)
     return f"{mins:02d}:{secs:02d}"
+
+def parse_temp_ror(input_str):
+    """Parse temp input with optional ROR. Format: '133:17' = 133°C with ROR 17"""
+    if not input_str:
+        return None, None
+
+    if ':' in input_str:
+        parts = input_str.split(':')
+        try:
+            temp = parts[0].strip()
+            ror = parts[1].strip()
+            return temp, ror
+        except:
+            return input_str, None
+    else:
+        return input_str, None
 
 def beep(sound='Ping'):
     """Make alert sound with different sounds for different phases"""
@@ -65,10 +81,13 @@ class RoastSession:
         self.yellow_time = None
         self.fc_start_time = None
         self.fc_start_temp = None
+        self.fc_start_ror = None
         self.fc_end_time = None
         self.fc_end_temp = None
+        self.fc_end_ror = None
         self.sc_start_time = None
         self.sc_start_temp = None
+        self.sc_start_ror = None
         self.end_time = None
         self.end_temp = None
         self.drop_temp = None
@@ -148,11 +167,13 @@ def get_fc_midpoint_temp(is_decaf):
     except:
         return 186 if is_decaf else 192
 
-def get_fc_approaching_time(is_decaf):
-    """Calculate when to alert for approaching FC (45s before avg FC start)"""
+def get_fc_start_estimates(is_decaf):
+    """Get estimated FC start time and temp from historical data"""
     if not os.path.exists(ROAST_LOG_FILE):
         # Default values if no history
-        return 435 if is_decaf else 495  # 7:15 for decaf, 8:15 for regular
+        default_time = 480 if is_decaf else 540  # 8:00 for decaf, 9:00 for regular
+        default_temp = 186 if is_decaf else 192
+        return default_time, default_temp
 
     try:
         with open(ROAST_LOG_FILE, 'r') as f:
@@ -160,10 +181,13 @@ def get_fc_approaching_time(is_decaf):
             rows = [r for r in reader if r.get('Decaf', '').lower() == ('yes' if is_decaf else 'no')]
 
             if not rows:
-                return 435 if is_decaf else 495
+                default_time = 480 if is_decaf else 540
+                default_temp = 186 if is_decaf else 192
+                return default_time, default_temp
 
-            # Get FC start times from recent roasts
+            # Get FC start times and temps from recent roasts
             fc_start_times = []
+            fc_start_temps = []
             for r in rows[-5:]:  # Last 5 roasts of this type
                 fc_start_time = r.get('First Crack Start Time') or r.get('First Crack Time', '')
                 if fc_start_time and ':' in fc_start_time:
@@ -174,14 +198,26 @@ def get_fc_approaching_time(is_decaf):
                     except:
                         pass
 
-            if fc_start_times:
-                avg_fc_start = sum(fc_start_times) / len(fc_start_times)
-                # 45 seconds before average
-                return int(avg_fc_start - 45)
-            else:
-                return 435 if is_decaf else 495
+                fc_start_temp = r.get('First Crack Start Temp') or r.get('First Crack Temp', '')
+                if fc_start_temp:
+                    try:
+                        fc_start_temps.append(float(fc_start_temp))
+                    except:
+                        pass
+
+            avg_time = int(sum(fc_start_times) / len(fc_start_times)) if fc_start_times else (480 if is_decaf else 540)
+            avg_temp = int(sum(fc_start_temps) / len(fc_start_temps)) if fc_start_temps else (186 if is_decaf else 192)
+
+            return avg_time, avg_temp
     except:
-        return 435 if is_decaf else 495
+        default_time = 480 if is_decaf else 540
+        default_temp = 186 if is_decaf else 192
+        return default_time, default_temp
+
+def get_fc_approaching_time(is_decaf):
+    """Calculate when to alert for approaching FC (45s before avg FC start)"""
+    fc_start_time, _ = get_fc_start_estimates(is_decaf)
+    return fc_start_time - 45
 
 def run_roast_session():
     """Run an interactive roast session"""
@@ -233,7 +269,9 @@ def run_roast_session():
     session.turnaround_temp = input("Turnaround temp (°C): ").strip()
     session.early_notes = input("Early notes (optional): ").strip()
 
-    print("\nPress ENTER when FIRST CRACK STARTS...")
+    # Get FC estimates from historical data
+    fc_est_time, fc_est_temp = get_fc_start_estimates(is_decaf)
+    print(f"\nPress ENTER when FIRST CRACK STARTS... (expected ~{format_time(fc_est_time)} @ {fc_est_temp}°C)")
 
     # Run timer with milestone checks
     last_milestone = 0
@@ -278,8 +316,8 @@ def run_roast_session():
     clear_line()
     print(f"\n⏱  First Crack STARTED at {format_time(session.fc_start_time)}")
 
-    fc_start_temp = input("Temperature at first crack start (°C): ").strip()
-    session.fc_start_temp = fc_start_temp
+    fc_start_input = input("Temperature at first crack start (°C or °C:ROR): ").strip()
+    session.fc_start_temp, session.fc_start_ror = parse_temp_ror(fc_start_input)
 
     print("\n🔊 FIRST CRACK STARTED")
     beep('Glass')
@@ -319,8 +357,8 @@ def run_roast_session():
     clear_line()
     print(f"\n⏱  First Crack ENDED at {format_time(session.fc_end_time)}")
 
-    fc_end_temp = input("Temperature at first crack end (°C): ").strip()
-    session.fc_end_temp = fc_end_temp
+    fc_end_input = input("Temperature at first crack end (°C or °C:ROR): ").strip()
+    session.fc_end_temp, session.fc_end_ror = parse_temp_ror(fc_end_input)
 
     print("\n🔊 FIRST CRACK ENDED - Development phase")
     beep('Bottle')
@@ -362,9 +400,9 @@ def run_roast_session():
     if was_second_crack:
         # Second crack control point
         print("\n🔊 SECOND CRACK STARTED")
-        sc_temp = input("Temperature at second crack start (°C): ").strip()
+        sc_input = input("Temperature at second crack start (°C or °C:ROR): ").strip()
         session.sc_start_time = event_time
-        session.sc_start_temp = sc_temp
+        session.sc_start_temp, session.sc_start_ror = parse_temp_ror(sc_input)
         beep('Pop')
 
         # Continue to drop
@@ -478,10 +516,13 @@ def save_roast(session, roast_level, notes):
             yellow_time,
             fc_start_time,
             session.fc_start_temp or '',
+            session.fc_start_ror or '',
             fc_end_time,
             session.fc_end_temp or '',
+            session.fc_end_ror or '',
             sc_start_time,
             session.sc_start_temp or '',
+            session.sc_start_ror or '',
             end_time,
             session.end_temp or '',
             session.drop_temp or '',
