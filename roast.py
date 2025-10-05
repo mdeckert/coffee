@@ -109,9 +109,11 @@ def run_roast_session():
     print("\n=== COFFEE ROAST SESSION ===\n")
 
     # Pre-roast reminders
+    beep(2)
     print("⚠️  PRE-ROAST CHECKLIST:")
     print("   □ Empty the chaff collector")
     print("   □ Turn OFF cooling mode")
+    print("   □ Close the roast chamber")
     print()
     input("Press ENTER when ready to continue...")
     print()

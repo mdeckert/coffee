@@ -11,30 +11,17 @@ python3 roast.py               # All-in-one timer + logger
 ```
 
 **How it works:**
-1. Answer setup questions (bean type, decaf/regular, etc.)
-2. Press ENTER when you load beans → timer starts
-3. Press Ctrl+C at first crack → log temperature
-4. Press Ctrl+C when you drop beans → log end temps
-5. Add notes and it auto-saves everything
+1. Answer: Decaf? (y/n) - that's it!
+2. Complete pre-roast checklist (empty chaff, turn off cooling)
+3. Press ENTER when you load beans → timer starts with audio alerts
+4. Press ENTER at first crack START → log temperature
+5. Press ENTER at first crack END → log temperature (when you lower heat)
+6. Press ENTER when you drop beans → log end temps
+7. Add notes and it auto-saves everything
 
-### Alternative: Use Separate Tools
+### Analyze Your Progress
 
-**Before your roast:**
-```bash
-vi SKYWALKER_GUIDE.md          # Read roasting guidelines
-```
-
-**During your roast:**
-```bash
-python3 roast_timer.py         # Timer with alerts
-```
-
-**After your roast:**
-```bash
-python3 roast_logger.py        # Manual logging
-```
-
-**Analyze your progress:**
+After logging roasts with roast.py:
 ```bash
 python3 roast_stats.py         # View statistics and comparisons
 ```
@@ -67,6 +54,22 @@ python3 roast.py
 7. Add color notes and observations
 8. Done! Data saved automatically
 
+### 📊 roast_stats.py
+**Statistical analysis of your roasting history**
+
+**Features:**
+- Compare decaf vs regular bean performance
+- Track averages and consistency
+- Identify trends over time
+- Variance analysis
+
+**Usage:**
+```bash
+python3 roast_stats.py
+```
+
+**Works with roast.py's CSV output** - analyzes all your logged roasts
+
 ---
 
 ### 📚 SKYWALKER_GUIDE.md
@@ -83,92 +86,19 @@ Complete roasting guide for Colombian beans with your Skywalker roaster.
 
 ---
 
-### 🪵 roast_logger.py
-Interactive logging tool for recording roast data.
-
-**Features:**
-- Records all roast parameters (temps, times, bean type)
-- Tracks decaf vs regular beans separately
-- Creates CSV log file for analysis
-- View recent roast history
-
-**Usage:**
-```bash
-python3 roast_logger.py
-```
-
-**Data logged:**
-- Date, time, bean origin, decaf/regular
-- Yellow phase, first crack, second crack timings
-- Temperature at each stage
-- Total roast time
-- Target vs actual roast level
-- Notes and observations
-
-**Output:** Creates `roast_log.csv` in this directory
-
----
-
-### 📊 roast_stats.py
-Statistical analysis of your roasting history.
-
-**Features:**
-- Compare decaf vs regular bean performance
-- Track averages and consistency
-- Identify trends over time
-- Variance analysis
-
-**Usage:**
-```bash
-python3 roast_stats.py
-```
-
-**Metrics:**
-- Average first crack time/temp
-- Average total roast time
-- Average development time
-- Consistency measurements (standard deviation)
-- Decaf vs regular comparisons
-
----
-
-### ⏱️ roast_timer.py
-Real-time timer with audio alerts for roast stages.
-
-**Features:**
-- Separate profiles for regular and decaf beans
-- Audio alerts at key milestones
-- Cooling timer (5 min recommended)
-- Rest period timer
-- Custom countdown timers
-
-**Usage:**
-```bash
-python3 roast_timer.py
-```
-
-**Alerts at:**
-- Yellowing/drying phase completion
-- First crack window
-- Development phase
-- Target drop time zones
-- Custom milestones
-
----
-
 ## Typical Workflow
 
 ### First Time Setup
 1. Read `SKYWALKER_GUIDE.md` to understand your target profile
 2. Prepare your beans and roaster
 
-### Each Roast Session (with roast.py)
-1. **Pre-roast:** Review `SKYWALKER_GUIDE.md`, prepare beans and roaster
-2. **Start:** Run `python3 roast.py` and answer setup questions
-3. **Load beans:** Press ENTER to start timer
-4. **First crack:** Press Ctrl+C and log temperature
-5. **Drop beans:** Press Ctrl+C and log end temps
-6. **Add notes:** Enter observations while cooling beans
+### Each Roast Session
+1. **Pre-roast:** Review `SKYWALKER_GUIDE.md`, prepare beans
+2. **Start:** Run `python3 roast.py`, answer decaf y/n, complete checklist
+3. **Load beans:** Press ENTER → timer starts with audio alerts
+4. **First crack starts:** Press ENTER, log temperature
+5. **First crack ends:** Press ENTER, log temperature (when you lower heat)
+6. **Drop beans:** Press ENTER, log end temps and notes
 7. **Done:** Data saved automatically to `roast_log.csv`
 
 ### Weekly/Monthly Review
@@ -183,22 +113,14 @@ python3 roast_timer.py
 
 ### Data Collection
 - **Log every roast** - even "bad" ones provide learning data
-- **Be consistent** with measurements for better analysis
-- **Add tasting notes** after rest period (edit CSV directly)
+- **Be consistent** with timing - press ENTER at the same points each time
+- **Add tasting notes** after rest period (edit CSV directly with vi)
 
 ### Using the Tools
-- **Timer alerts** help you catch first crack and avoid over-roasting
+- **Audio alerts** remind you to check key milestones
 - **Stats show patterns** you might miss roast-to-roast
 - **Decaf comparison** prevents treating decaf like regular beans
-
-### Vi-Friendly Workflow
-Since you like vi:
-```bash
-vi SKYWALKER_GUIDE.md          # Reference during roast
-python3 roast_timer.py         # Timer in one terminal
-python3 roast_logger.py        # Logger in another terminal
-vi roast_log.csv               # Edit/review logged data
-```
+- **First crack tracking** helps dial in your temp reduction timing
 
 ---
 
@@ -206,33 +128,34 @@ vi roast_log.csv               # Edit/review logged data
 
 All files in: `/Users/mdeckert/coffee/`
 
-- `roast.py` - **RECOMMENDED** Integrated timer + logger
+- `roast.py` - Integrated timer + logger (use this!)
+- `roast_stats.py` - Analysis and statistics tool
 - `SKYWALKER_GUIDE.md` - Roasting reference guide
-- `roast_stats.py` - Analysis tool
-- `roast_log.csv` - Your roast data (created on first use)
-- `roast_logger.py` - Manual logging tool (use roast.py instead)
-- `roast_timer.py` - Standalone timer (use roast.py instead)
+- `roast_log.csv` - Your roast data (auto-created)
 - `README.md` - This file
 
 ---
 
 ## Customization Ideas
 
-### Modify the Timer
-Edit `roast_timer.py` to adjust alert times for your specific roaster's behavior.
+### Change Bean Origin
+Edit `roast.py` line 119 to change from "Colombian" to another origin.
+
+### Adjust Alert Timings
+Edit the `get_milestones()` function in `roast.py` (around line 278) to change when audio alerts sound.
+
+### Change Audio Sound
+Edit line 38 in `roast.py` - replace `Ping.aiff` with another sound from `/System/Library/Sounds/`
 
 ### Add Tasting Notes
-After coffee has rested and you've tasted it:
+After coffee has rested:
 ```bash
 vi roast_log.csv
 ```
 Find the roast row and add notes in the "Tasting Notes" column.
 
-### Track Other Origins
-The logger and stats work with any bean origin, not just Colombian. Just enter the origin when logging.
-
 ### Export Data
-The CSV file works with Excel, Google Sheets, or any data analysis tool:
+The CSV works with Excel, Google Sheets, or any analysis tool:
 ```bash
 open roast_log.csv              # Opens in default app
 ```
@@ -241,17 +164,20 @@ open roast_log.csv              # Opens in default app
 
 ## Troubleshooting
 
-### Scripts won't run
-Make sure they're executable:
+### Script won't run
+Make sure it's executable:
 ```bash
-chmod +x roast_logger.py roast_stats.py roast_timer.py
+chmod +x roast.py roast_stats.py
 ```
 
 ### Can't find roast_log.csv
-It's created automatically when you log your first roast with `roast_logger.py`.
+It's created automatically when you complete your first roast with `roast.py`.
 
-### Timer alerts not working
-Audio alerts use system beep. If silent, check system volume and terminal bell settings.
+### Audio alerts not working
+Check system volume. Alerts use macOS system sounds. Test with:
+```bash
+afplay /System/Library/Sounds/Ping.aiff
+```
 
 ### Want to reset data
 Backup or delete `roast_log.csv` to start fresh:

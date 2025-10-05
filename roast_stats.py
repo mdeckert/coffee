@@ -63,12 +63,12 @@ def compare_decaf_vs_regular(roasts):
 
 def analyze_group(roasts, label):
     """Analyze statistics for a group of roasts"""
-    # First crack times
-    fc_times = [parse_time(r['First Crack Time']) for r in roasts]
+    # First crack start times
+    fc_times = [parse_time(r.get('First Crack Start Time') or r.get('First Crack Time', '')) for r in roasts]
     fc_times = [t for t in fc_times if t is not None]
 
-    # First crack temps
-    fc_temps = [parse_temp(r['First Crack Temp']) for r in roasts]
+    # First crack start temps
+    fc_temps = [parse_temp(r.get('First Crack Start Temp') or r.get('First Crack Temp', '')) for r in roasts]
     fc_temps = [t for t in fc_temps if t is not None]
 
     # Total times
