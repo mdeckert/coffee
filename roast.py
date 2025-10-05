@@ -105,6 +105,49 @@ class RoastSession:
         self.end_temp = end_temp
         self.drop_temp = drop_temp
 
+def get_fc_midpoint_temp(is_decaf):
+    """Calculate FC midpoint temp from historical data"""
+    if not os.path.exists(ROAST_LOG_FILE):
+        # Default values if no history
+        return 186 if is_decaf else 192
+
+    try:
+        with open(ROAST_LOG_FILE, 'r') as f:
+            reader = csv.DictReader(f)
+            rows = [r for r in reader if r.get('Decaf', '').lower() == ('yes' if is_decaf else 'no')]
+
+            if not rows:
+                return 186 if is_decaf else 192
+
+            # Get FC start and end temps from recent roasts
+            fc_starts = []
+            fc_ends = []
+            for r in rows[-5:]:  # Last 5 roasts of this type
+                fc_start = r.get('First Crack Start Temp') or r.get('First Crack Temp', '')
+                fc_end = r.get('First Crack End Temp', '')
+                if fc_start:
+                    try:
+                        fc_starts.append(float(fc_start))
+                    except:
+                        pass
+                if fc_end:
+                    try:
+                        fc_ends.append(float(fc_end))
+                    except:
+                        pass
+
+            if fc_starts and fc_ends:
+                avg_start = sum(fc_starts) / len(fc_starts)
+                avg_end = sum(fc_ends) / len(fc_ends)
+                return int((avg_start + avg_end) / 2)
+            elif fc_starts:
+                # If we only have start temps, add ~8°C for estimated midpoint
+                return int(sum(fc_starts) / len(fc_starts) + 4)
+            else:
+                return 186 if is_decaf else 192
+    except:
+        return 186 if is_decaf else 192
+
 def run_roast_session():
     """Run an interactive roast session"""
     print("\n=== COFFEE ROAST SESSION ===\n")
@@ -130,15 +173,18 @@ def run_roast_session():
     print(f"\n{bean_origin} {'DECAF' if is_decaf else 'REGULAR'} - {batch_size} lb")
     print(f"Target: {target_level}\n")
 
+    # Calculate FC midpoint from historical data
+    fc_midpoint = get_fc_midpoint_temp(is_decaf)
+
     # Display target settings
     if is_decaf:
         print("🎯 TARGET SETTINGS (DECAF):")
         print("   Load: 200°C, Power: 80, Fan: 60")
-        print("   FC end (~186°C): Power: 30, Fan: 90")
+        print(f"   At ~{fc_midpoint}°C (FC midpoint): Power: 30, Fan: 90")
     else:
         print("🎯 TARGET SETTINGS (REGULAR):")
         print("   Load: 215°C, Power: 85, Fan: 60")
-        print("   FC end (~194°C): Power: 35, Fan: 85")
+        print(f"   At ~{fc_midpoint}°C (FC midpoint): Power: 35, Fan: 85")
     print()
 
     # Control points
@@ -203,11 +249,11 @@ def run_roast_session():
     print("\n🔊 FIRST CRACK STARTED")
     beep('Glass')
 
-    # Show power/fan adjustment reminder for FC end
+    # Show power/fan adjustment reminder at FC midpoint
     if is_decaf:
-        print("\n⚡ At FC end (~186°C): Power: 30, Fan: 90")
+        print(f"\n⚡ At ~{fc_midpoint}°C (FC midpoint): Power: 30, Fan: 90")
     else:
-        print("\n⚡ At FC end (~194°C): Power: 35, Fan: 85")
+        print(f"\n⚡ At ~{fc_midpoint}°C (FC midpoint): Power: 35, Fan: 85")
 
     # Continue timer until first crack ENDS
     print("\nWhen FIRST CRACK ENDS, press ENTER...\n")
