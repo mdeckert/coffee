@@ -4,24 +4,37 @@ Complete toolkit for tracking, timing, and analyzing your coffee roasts.
 
 ## Quick Start
 
-### 1. Before Your Roast
-Read the guide and optionally start the timer:
+### RECOMMENDED: Use the Integrated Tool
+
+```bash
+python3 roast.py               # All-in-one timer + logger
+```
+
+**How it works:**
+1. Answer setup questions (bean type, decaf/regular, etc.)
+2. Press ENTER when you load beans → timer starts
+3. Press Ctrl+C at first crack → log temperature
+4. Press Ctrl+C when you drop beans → log end temps
+5. Add notes and it auto-saves everything
+
+### Alternative: Use Separate Tools
+
+**Before your roast:**
 ```bash
 vi SKYWALKER_GUIDE.md          # Read roasting guidelines
-python3 roast_timer.py         # Optional: Start timer with alerts
 ```
 
-### 2. During Your Roast
-Use the timer to get alerts at key stages (first crack, development phase, etc.)
-
-### 3. After Your Roast
-Log your roast data:
+**During your roast:**
 ```bash
-python3 roast_logger.py        # Log roast details
+python3 roast_timer.py         # Timer with alerts
 ```
 
-### 4. Analyze Your Progress
-Review statistics and trends:
+**After your roast:**
+```bash
+python3 roast_logger.py        # Manual logging
+```
+
+**Analyze your progress:**
 ```bash
 python3 roast_stats.py         # View statistics and comparisons
 ```
@@ -29,6 +42,32 @@ python3 roast_stats.py         # View statistics and comparisons
 ---
 
 ## Files in This Toolkit
+
+### ⚡ roast.py (RECOMMENDED)
+**Integrated timer and logger - the easiest way to track your roasts**
+
+**Features:**
+- Real-time timer with automatic milestone alerts
+- Three simple control points: Load beans, First crack, Drop beans
+- Auto-logs all data to CSV
+- No switching between tools during your roast
+
+**Usage:**
+```bash
+python3 roast.py
+```
+
+**Control Flow:**
+1. Enter bean info (origin, decaf/regular, batch size)
+2. **Press ENTER** when you load beans (starts timer)
+3. Timer runs with audio alerts at key times
+4. **Press Ctrl+C** at first crack, enter temperature
+5. Timer continues showing development time
+6. **Press Ctrl+C** when dropping beans, enter temps
+7. Add color notes and observations
+8. Done! Data saved automatically
+
+---
 
 ### 📚 SKYWALKER_GUIDE.md
 Complete roasting guide for Colombian beans with your Skywalker roaster.
@@ -123,16 +162,14 @@ python3 roast_timer.py
 1. Read `SKYWALKER_GUIDE.md` to understand your target profile
 2. Prepare your beans and roaster
 
-### Each Roast Session
-1. **Pre-roast:** Review guide, decide on regular or decaf profile
-2. **During roast:**
-   - Run `roast_timer.py` for alerts (optional but helpful)
-   - Monitor temps and listen for cracks
-   - Take notes on anything unusual
-3. **Post-roast:**
-   - Cool beans rapidly (4-5 min)
-   - Run `roast_logger.py` to record data while fresh in memory
-   - Note observations: color, smell, any issues
+### Each Roast Session (with roast.py)
+1. **Pre-roast:** Review `SKYWALKER_GUIDE.md`, prepare beans and roaster
+2. **Start:** Run `python3 roast.py` and answer setup questions
+3. **Load beans:** Press ENTER to start timer
+4. **First crack:** Press Ctrl+C and log temperature
+5. **Drop beans:** Press Ctrl+C and log end temps
+6. **Add notes:** Enter observations while cooling beans
+7. **Done:** Data saved automatically to `roast_log.csv`
 
 ### Weekly/Monthly Review
 1. Run `roast_stats.py` to analyze progress
@@ -169,11 +206,12 @@ vi roast_log.csv               # Edit/review logged data
 
 All files in: `/Users/mdeckert/coffee/`
 
+- `roast.py` - **RECOMMENDED** Integrated timer + logger
 - `SKYWALKER_GUIDE.md` - Roasting reference guide
-- `roast_logger.py` - Logging tool
 - `roast_stats.py` - Analysis tool
-- `roast_timer.py` - Timer with alerts
 - `roast_log.csv` - Your roast data (created on first use)
+- `roast_logger.py` - Manual logging tool (use roast.py instead)
+- `roast_timer.py` - Standalone timer (use roast.py instead)
 - `README.md` - This file
 
 ---
