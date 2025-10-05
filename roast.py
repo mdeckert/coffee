@@ -139,6 +139,13 @@ def run_roast_session():
     beep(1)
     print("\n🔥 ROAST STARTED!\n")
 
+    # Collect data right after loading
+    session.loading_temp = input("Loading temp (°F): ").strip()
+    session.turnaround_temp = input("Turnaround temp (°F): ").strip()
+    session.early_notes = input("Early notes (optional): ").strip()
+
+    print("\nPress ENTER when FIRST CRACK STARTS...")
+
     # Run timer with milestone checks
     last_milestone = 0
     milestones = get_milestones(is_decaf)
@@ -168,14 +175,6 @@ def run_roast_session():
 
     timer_thread = threading.Thread(target=run_timer, daemon=True)
     timer_thread.start()
-
-    # Collect early data while timer runs
-    print("Enter data while waiting for first crack:")
-    session.loading_temp = input("Loading temp (°F): ").strip()
-    session.turnaround_temp = input("Turnaround temp (°F): ").strip()
-    session.early_notes = input("Early notes (optional): ").strip()
-
-    print("\nWhen FIRST CRACK STARTS, press ENTER...")
 
     # Wait for first crack START
     input()  # User presses ENTER at first crack start
