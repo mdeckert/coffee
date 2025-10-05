@@ -395,7 +395,7 @@ def run_roast_session():
 
     # Ask if this was second crack or drop
     print(f"\n⏱  Event at {format_time(event_time)}")
-    was_second_crack = input("Was this SECOND CRACK? (y/n, default: n): ").strip().lower() == 'y'
+    was_second_crack = input("Was this SECOND CRACK? (y/n): ").strip().lower() == 'y'
 
     if was_second_crack:
         # Second crack control point
@@ -433,12 +433,9 @@ def run_roast_session():
         session.end_time = event_time
         print(f"\n⏱  Beans dropped at {format_time(session.end_time)}")
 
-    # Get temps
+    # Get end temp
     end_temp = input("End temperature (°C): ").strip()
-    drop_temp = input("Drop/cooling tray temp (°C): ").strip()
-
     session.end_temp = end_temp
-    session.drop_temp = drop_temp
 
     print("\n✓ ROAST COMPLETE!")
     beep('Funk')
