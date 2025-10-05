@@ -137,9 +137,9 @@ def run_roast_session():
     input("Press ENTER when you LOAD THE BEANS and start the roast...")
     session.start_time = time.time()
     beep(1)
-    print("\n🔥 ROAST STARTED!\n")
+    print("\n🔥 ROAST STARTED! (Timer running in background)\n")
 
-    # Collect data right after loading
+    # Collect data right after loading (timer keeps running, just not displaying)
     session.loading_temp = input("Loading temp (°F): ").strip()
     session.turnaround_temp = input("Turnaround temp (°F): ").strip()
     session.early_notes = input("Early notes (optional): ").strip()
