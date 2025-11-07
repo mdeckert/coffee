@@ -1,0 +1,5 @@
+Date,Time,Bean Origin,Decaf,Batch Size (lbs),Yellow Time,First Crack Time,First Crack Temp,Second Crack Time,Second Crack Temp,End Time,End Temp,Drop Temp,Total Roast Time (min),Target Roast Level,Actual Color,Notes,Tasting Notes (added later)
+2025-10-05,12:51,Colombian,No,1,,06:33,190,08:07,205,,,10:38,221,,10.6,Medium-Dark,A bit too dark and shiny,,
+2025-10-05,13:07,Colombian,Yes,1,loaded at 200,186,,,07:12,186,07:55,198,,,11:06,223,,11.1,Medium-Dark,"good color (not too black), slight oil",,
+2025-10-05,13:21,Colombian,No,1,220,115,,,06:30,194,07:34,206,,,09:42,231,,9.7,Medium-Dark,slightly too dark,,
+2025-10-05,13:37,Colombian,No,1,225,113,high loading temp,,06:17,191,07:27,205,,,09:39,229,,9.7,Medium-Dark,5,,

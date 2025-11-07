@@ -185,11 +185,12 @@ def get_fc_start_estimates(is_decaf):
                 default_temp = 186 if is_decaf else 192
                 return default_time, default_temp
 
-            # Get FC start times and temps from recent roasts
+            # Get FC start times and temps from recent roasts (handle old and new formats)
             fc_start_times = []
             fc_start_temps = []
             for r in rows[-5:]:  # Last 5 roasts of this type
-                fc_start_time = r.get('First Crack Start Time') or r.get('First Crack Time', '')
+                # Try new format first, then old format
+                fc_start_time = r.get('First Crack Start Time', '') or r.get('First Crack Time', '')
                 if fc_start_time and ':' in fc_start_time:
                     try:
                         parts = fc_start_time.split(':')
@@ -198,7 +199,8 @@ def get_fc_start_estimates(is_decaf):
                     except:
                         pass
 
-                fc_start_temp = r.get('First Crack Start Temp') or r.get('First Crack Temp', '')
+                # Try new format first, then old format
+                fc_start_temp = r.get('First Crack Start Temp', '') or r.get('First Crack Temp', '')
                 if fc_start_temp:
                     try:
                         fc_start_temps.append(float(fc_start_temp))
@@ -218,6 +220,150 @@ def get_fc_approaching_time(is_decaf):
     """Calculate when to alert for approaching FC (45s before avg FC start)"""
     fc_start_time, _ = get_fc_start_estimates(is_decaf)
     return fc_start_time - 45
+
+def get_all_phase_estimates(is_decaf):
+    """Get estimated times and temps for all roast phases from historical data"""
+    if not os.path.exists(ROAST_LOG_FILE):
+        # Default values if no history
+        return {
+            'turnaround_time': 60,  # ~1:00 typical turnaround
+            'yellow_time': 300 if is_decaf else 330,  # 5:00 for decaf, 5:30 for regular
+            'fc_start_time': 480 if is_decaf else 540,  # 8:00 for decaf, 9:00 for regular
+            'fc_start_temp': 186 if is_decaf else 192,
+            'fc_end_time': 570 if is_decaf else 630,  # 9:30 for decaf, 10:30 for regular
+            'fc_end_temp': 194 if is_decaf else 200,
+            'sc_start_time': 660 if is_decaf else 720,  # 11:00 for decaf, 12:00 for regular
+            'sc_start_temp': 204 if is_decaf else 210,
+            'end_time': 720 if is_decaf else 780,  # 12:00 for decaf, 13:00 for regular
+            'end_temp': 212 if is_decaf else 218
+        }
+
+    try:
+        with open(ROAST_LOG_FILE, 'r') as f:
+            reader = csv.DictReader(f)
+            rows = [r for r in reader if r.get('Decaf', '').lower() == ('yes' if is_decaf else 'no')]
+
+            if not rows:
+                return get_all_phase_estimates.__wrapped__(is_decaf)  # Return defaults
+
+            recent_rows = rows[-5:]  # Last 5 roasts of this type
+
+            def parse_time_to_seconds(time_str):
+                """Convert MM:SS to seconds"""
+                if not time_str or ':' not in time_str:
+                    return None
+                try:
+                    parts = time_str.split(':')
+                    return int(parts[0]) * 60 + int(parts[1])
+                except:
+                    return None
+
+            def parse_temp(temp_str):
+                """Parse temperature value"""
+                if not temp_str:
+                    return None
+                try:
+                    return float(temp_str)
+                except:
+                    return None
+
+            # Collect data for each phase (handle both old and new column formats)
+            yellow_times = []
+            fc_start_times = []
+            fc_start_temps = []
+            fc_end_times = []
+            fc_end_temps = []
+            sc_start_times = []
+            sc_start_temps = []
+            end_times = []
+            end_temps = []
+
+            for r in recent_rows:
+                # Yellow time
+                yt = parse_time_to_seconds(r.get('Yellow Time', ''))
+                if yt:
+                    yellow_times.append(yt)
+
+                # FC start time (try new format first, then old)
+                fct = parse_time_to_seconds(r.get('First Crack Start Time', '')) or parse_time_to_seconds(r.get('First Crack Time', ''))
+                if fct:
+                    fc_start_times.append(fct)
+
+                # FC start temp (try new format first, then old)
+                fctemp = parse_temp(r.get('First Crack Start Temp', '')) or parse_temp(r.get('First Crack Temp', ''))
+                if fctemp:
+                    fc_start_temps.append(fctemp)
+
+                # FC end time
+                fcet = parse_time_to_seconds(r.get('First Crack End Time', ''))
+                if fcet:
+                    fc_end_times.append(fcet)
+
+                # FC end temp
+                fcemp = parse_temp(r.get('First Crack End Temp', ''))
+                if fcemp:
+                    fc_end_temps.append(fcemp)
+
+                # SC start time (try new format first, then old)
+                sct = parse_time_to_seconds(r.get('Second Crack Start Time', '')) or parse_time_to_seconds(r.get('Second Crack Time', ''))
+                if sct:
+                    sc_start_times.append(sct)
+
+                # SC start temp (try new format first, then old)
+                sctemp = parse_temp(r.get('Second Crack Start Temp', '')) or parse_temp(r.get('Second Crack Temp', ''))
+                if sctemp:
+                    sc_start_temps.append(sctemp)
+
+                # End time
+                et = parse_time_to_seconds(r.get('End Time', ''))
+                if et:
+                    end_times.append(et)
+
+                # End temp
+                etemp = parse_temp(r.get('End Temp', ''))
+                if etemp:
+                    end_temps.append(etemp)
+
+            # Calculate averages, falling back to defaults
+            defaults = {
+                'turnaround_time': 60,  # Typical turnaround ~1:00
+                'yellow_time': 300 if is_decaf else 330,
+                'fc_start_time': 480 if is_decaf else 540,
+                'fc_start_temp': 186 if is_decaf else 192,
+                'fc_end_time': 570 if is_decaf else 630,
+                'fc_end_temp': 194 if is_decaf else 200,
+                'sc_start_time': 660 if is_decaf else 720,
+                'sc_start_temp': 204 if is_decaf else 210,
+                'end_time': 720 if is_decaf else 780,
+                'end_temp': 212 if is_decaf else 218
+            }
+
+            return {
+                'turnaround_time': 60,  # Not tracked in CSV, using typical value
+                'yellow_time': int(sum(yellow_times) / len(yellow_times)) if yellow_times else defaults['yellow_time'],
+                'fc_start_time': int(sum(fc_start_times) / len(fc_start_times)) if fc_start_times else defaults['fc_start_time'],
+                'fc_start_temp': int(sum(fc_start_temps) / len(fc_start_temps)) if fc_start_temps else defaults['fc_start_temp'],
+                'fc_end_time': int(sum(fc_end_times) / len(fc_end_times)) if fc_end_times else defaults['fc_end_time'],
+                'fc_end_temp': int(sum(fc_end_temps) / len(fc_end_temps)) if fc_end_temps else defaults['fc_end_temp'],
+                'sc_start_time': int(sum(sc_start_times) / len(sc_start_times)) if sc_start_times else defaults['sc_start_time'],
+                'sc_start_temp': int(sum(sc_start_temps) / len(sc_start_temps)) if sc_start_temps else defaults['sc_start_temp'],
+                'end_time': int(sum(end_times) / len(end_times)) if end_times else defaults['end_time'],
+                'end_temp': int(sum(end_temps) / len(end_temps)) if end_temps else defaults['end_temp']
+            }
+    except:
+        # Return defaults on any error
+        return {
+            'turnaround_time': 60,
+            'yellow_time': 300 if is_decaf else 330,
+            'fc_start_time': 480 if is_decaf else 540,
+            'fc_start_temp': 186 if is_decaf else 192,
+            'fc_end_time': 570 if is_decaf else 630,
+            'fc_end_temp': 194 if is_decaf else 200,
+            'sc_start_time': 660 if is_decaf else 720,
+            'sc_start_temp': 204 if is_decaf else 210,
+            'end_time': 720 if is_decaf else 780,
+            'end_temp': 212 if is_decaf else 218
+        }
 
 def run_roast_session():
     """Run an interactive roast session"""
@@ -244,18 +390,22 @@ def run_roast_session():
     print(f"\n{bean_origin} {'DECAF' if is_decaf else 'REGULAR'} - {batch_size} lb")
     print(f"Target: {target_level}\n")
 
-    # Calculate FC midpoint from historical data
-    fc_midpoint = get_fc_midpoint_temp(is_decaf)
+    # Get all phase estimates from historical data (early so we can use throughout)
+    phase_estimates = get_all_phase_estimates(is_decaf)
+
+    # Calculate FC midpoint (halfway between start and end)
+    fc_midpoint_time = int((phase_estimates['fc_start_time'] + phase_estimates['fc_end_time']) / 2)
+    fc_midpoint_temp = int((phase_estimates['fc_start_temp'] + phase_estimates['fc_end_temp']) / 2)
 
     # Display target settings
     if is_decaf:
         print("🎯 TARGET SETTINGS (DECAF):")
         print("   Load: 200°C, Power: 80, Fan: 60")
-        print(f"   At ~{fc_midpoint}°C (FC midpoint): Power: 30, Fan: 90")
+        print(f"   At ~{format_time(fc_midpoint_time)} / {fc_midpoint_temp}°C (FC midpoint): Power: 30, Fan: 90")
     else:
         print("🎯 TARGET SETTINGS (REGULAR):")
         print("   Load: 215°C, Power: 85, Fan: 60")
-        print(f"   At ~{fc_midpoint}°C (FC midpoint): Power: 35, Fan: 85")
+        print(f"   At ~{format_time(fc_midpoint_time)} / {fc_midpoint_temp}°C (FC midpoint): Power: 35, Fan: 85")
     print()
 
     # Control points
@@ -269,12 +419,18 @@ def run_roast_session():
     session.turnaround_temp = input("Turnaround temp (°C): ").strip()
     session.early_notes = input("Early notes (optional): ").strip()
 
-    # Get FC estimates from historical data
-    fc_est_time, fc_est_temp = get_fc_start_estimates(is_decaf)
-    print(f"\nPress ENTER when FIRST CRACK STARTS... (expected ~{format_time(fc_est_time)} @ {fc_est_temp}°C)")
+    # Display comprehensive timeline
+    print(f"\n📊 EXPECTED TIMELINE (based on historical data):")
+    print(f"   Turnaround:  ~{format_time(phase_estimates['turnaround_time'])}")
+    print(f"   Yellow:      ~{format_time(phase_estimates['yellow_time'])}")
+    print(f"   FC Start:    ~{format_time(phase_estimates['fc_start_time'])} @ {phase_estimates['fc_start_temp']}°C")
+    print(f"   FC End:      ~{format_time(phase_estimates['fc_end_time'])} @ {phase_estimates['fc_end_temp']}°C")
+    print(f"   SC Start:    ~{format_time(phase_estimates['sc_start_time'])} @ {phase_estimates['sc_start_temp']}°C")
+    print(f"   Drop:        ~{format_time(phase_estimates['end_time'])} @ {phase_estimates['end_temp']}°C")
+
+    print(f"\nPress ENTER when FIRST CRACK STARTS... (expected ~{format_time(phase_estimates['fc_start_time'])} @ {phase_estimates['fc_start_temp']}°C)")
 
     # Run timer with milestone checks
-    last_milestone = 0
     milestones = get_milestones(is_decaf)
 
     # Create a background timer thread
@@ -283,17 +439,22 @@ def run_roast_session():
 
     stop_timer = threading.Event()
 
+    class MilestoneTracker:
+        def __init__(self):
+            self.last_milestone = 0
+
+    tracker = MilestoneTracker()
+
     def run_timer():
-        last_milestone = 0
         while not stop_timer.is_set():
             elapsed = session.elapsed()
 
             # Check for milestone alerts
             for milestone_time, message in milestones:
-                if elapsed >= milestone_time and last_milestone < milestone_time:
+                if elapsed >= milestone_time and tracker.last_milestone < milestone_time:
                     display_timer(elapsed, message)
                     beep('Ping')
-                    last_milestone = milestone_time
+                    tracker.last_milestone = milestone_time
                     time.sleep(1)
 
             # Display timer
@@ -322,14 +483,18 @@ def run_roast_session():
     print("\n🔊 FIRST CRACK STARTED")
     beep('Glass')
 
-    # Show power/fan adjustment reminder at FC midpoint
+    # Show prominent power/fan adjustment reminder after data entry
+    print("\n" + "="*60)
+    print("⚡ REMINDER: Adjust Power/Fan at FC Midpoint!")
     if is_decaf:
-        print(f"\n⚡ At ~{fc_midpoint}°C (FC midpoint): Power: 30, Fan: 90")
+        print(f"   At ~{format_time(fc_midpoint_time)} / {fc_midpoint_temp}°C: Power: 30, Fan: 90")
     else:
-        print(f"\n⚡ At ~{fc_midpoint}°C (FC midpoint): Power: 35, Fan: 85")
+        print(f"   At ~{format_time(fc_midpoint_time)} / {fc_midpoint_temp}°C: Power: 35, Fan: 85")
+    print("="*60)
+    beep('Purr')  # Alert sound for reminder
 
     # Continue timer until first crack ENDS
-    print("\nWhen FIRST CRACK ENDS, press ENTER...\n")
+    print(f"\nWhen FIRST CRACK ENDS, press ENTER... (expected ~{format_time(phase_estimates['fc_end_time'])} @ {phase_estimates['fc_end_temp']}°C)\n")
     time.sleep(1)
 
     stop_timer.clear()
@@ -367,8 +532,8 @@ def run_roast_session():
     print("\n⚠️  REMINDER: Take care of prior roast beans now!")
     beep('Purr')
 
-    # Continue timer for development - wait for either second crack or drop
-    print("\nPress ENTER at SECOND CRACK START (or just drop beans if no 2nd crack)...\n")
+    # Continue timer for development - wait for second crack
+    print(f"\nPress ENTER at SECOND CRACK START (expected ~{format_time(phase_estimates['sc_start_time'])} @ {phase_estimates['sc_start_temp']}°C)\n")
     time.sleep(1)
 
     stop_timer.clear()
@@ -383,55 +548,47 @@ def run_roast_session():
     dev_timer_thread = threading.Thread(target=run_dev_timer, daemon=True)
     dev_timer_thread.start()
 
-    # Wait for second crack or drop
+    # Wait for second crack
     input()  # User presses ENTER
 
     # Mark the time immediately
-    event_time = session.elapsed()
+    session.sc_start_time = session.elapsed()
 
     stop_timer.set()
     dev_timer_thread.join(timeout=0.5)
     clear_line()
 
-    # Ask if this was second crack or drop
-    print(f"\n⏱  Event at {format_time(event_time)}")
-    was_second_crack = input("Was this SECOND CRACK? (y/n): ").strip().lower() == 'y'
+    # Second crack control point
+    print(f"\n⏱  Second Crack STARTED at {format_time(session.sc_start_time)}")
+    sc_input = input("Temperature at second crack start (°C or °C:ROR): ").strip()
+    session.sc_start_temp, session.sc_start_ror = parse_temp_ror(sc_input)
 
-    if was_second_crack:
-        # Second crack control point
-        print("\n🔊 SECOND CRACK STARTED")
-        sc_input = input("Temperature at second crack start (°C or °C:ROR): ").strip()
-        session.sc_start_time = event_time
-        session.sc_start_temp, session.sc_start_ror = parse_temp_ror(sc_input)
-        beep('Pop')
+    print("\n🔊 SECOND CRACK STARTED")
+    beep('Pop')
 
-        # Continue to drop
-        print("\nWhen you DROP THE BEANS, press ENTER...\n")
-        time.sleep(1)
+    # Continue to drop
+    print(f"\nWhen you DROP THE BEANS, press ENTER... (expected ~{format_time(phase_estimates['end_time'])} @ {phase_estimates['end_temp']}°C)\n")
+    time.sleep(1)
 
-        stop_timer.clear()
+    stop_timer.clear()
 
-        def run_final_timer():
-            while not stop_timer.is_set():
-                elapsed = session.elapsed()
-                sc_time = elapsed - session.sc_start_time
-                display_timer(elapsed, f"After 2nd crack: {format_time(sc_time)}")
-                time.sleep(0.1)
+    def run_final_timer():
+        while not stop_timer.is_set():
+            elapsed = session.elapsed()
+            sc_time = elapsed - session.sc_start_time
+            display_timer(elapsed, f"After 2nd crack: {format_time(sc_time)}")
+            time.sleep(0.1)
 
-        final_timer_thread = threading.Thread(target=run_final_timer, daemon=True)
-        final_timer_thread.start()
+    final_timer_thread = threading.Thread(target=run_final_timer, daemon=True)
+    final_timer_thread.start()
 
-        # Wait for drop
-        input()
-        session.end_time = session.elapsed()
-        stop_timer.set()
-        final_timer_thread.join(timeout=0.5)
-        clear_line()
-        print(f"\n⏱  Beans dropped at {format_time(session.end_time)}")
-    else:
-        # This was the drop
-        session.end_time = event_time
-        print(f"\n⏱  Beans dropped at {format_time(session.end_time)}")
+    # Wait for drop
+    input()
+    session.end_time = session.elapsed()
+    stop_timer.set()
+    final_timer_thread.join(timeout=0.5)
+    clear_line()
+    print(f"\n⏱  Beans dropped at {format_time(session.end_time)}")
 
     # Get end temp
     end_temp = input("End temperature (°C): ").strip()
@@ -472,18 +629,10 @@ def get_milestones(is_decaf):
     """Get time milestones based on bean type and historical data"""
     fc_approaching = get_fc_approaching_time(is_decaf)
 
-    if is_decaf:
-        return [
-            (270, "4:30 - Yellowing phase checkpoint"),
-            (fc_approaching, f"{format_time(fc_approaching)} - Approaching first crack zone!"),
-            (600, "10:00 - Listen for 2nd crack! Check sample port for color/oil"),
-        ]
-    else:
-        return [
-            (330, "5:30 - Yellowing should be complete"),
-            (fc_approaching, f"{format_time(fc_approaching)} - Approaching first crack zone!"),
-            (600, "10:00 - Listen for 2nd crack! Check sample port for color/oil"),
-        ]
+    return [
+        (fc_approaching, f"{format_time(fc_approaching)} - Approaching first crack zone!"),
+        (600, "10:00 - Listen for 2nd crack! Check sample port for color/oil"),
+    ]
 
 def save_roast(session, roast_level, notes):
     """Save roast to CSV log"""
