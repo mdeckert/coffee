@@ -227,6 +227,7 @@ def get_all_phase_estimates(is_decaf):
         # Default values if no history
         return {
             'turnaround_time': 60,  # ~1:00 typical turnaround
+            'turnaround_temp': 95 if is_decaf else 105,  # Typical turnaround temps
             'yellow_time': 300 if is_decaf else 330,  # 5:00 for decaf, 5:30 for regular
             'fc_start_time': 480 if is_decaf else 540,  # 8:00 for decaf, 9:00 for regular
             'fc_start_temp': 186 if is_decaf else 192,
@@ -268,7 +269,7 @@ def get_all_phase_estimates(is_decaf):
                     return None
 
             # Collect data for each phase (handle both old and new column formats)
-            yellow_times = []
+            turnaround_temps = []
             fc_start_times = []
             fc_start_temps = []
             fc_end_times = []
@@ -279,10 +280,10 @@ def get_all_phase_estimates(is_decaf):
             end_temps = []
 
             for r in recent_rows:
-                # Yellow time
-                yt = parse_time_to_seconds(r.get('Yellow Time', ''))
-                if yt:
-                    yellow_times.append(yt)
+                # Turnaround temp
+                tt = parse_temp(r.get('Turnaround Temp', ''))
+                if tt:
+                    turnaround_temps.append(tt)
 
                 # FC start time (try new format first, then old)
                 fct = parse_time_to_seconds(r.get('First Crack Start Time', '')) or parse_time_to_seconds(r.get('First Crack Time', ''))
@@ -327,7 +328,7 @@ def get_all_phase_estimates(is_decaf):
             # Calculate averages, falling back to defaults
             defaults = {
                 'turnaround_time': 60,  # Typical turnaround ~1:00
-                'yellow_time': 300 if is_decaf else 330,
+                'turnaround_temp': 95 if is_decaf else 105,
                 'fc_start_time': 480 if is_decaf else 540,
                 'fc_start_temp': 186 if is_decaf else 192,
                 'fc_end_time': 570 if is_decaf else 630,
@@ -340,7 +341,7 @@ def get_all_phase_estimates(is_decaf):
 
             return {
                 'turnaround_time': 60,  # Not tracked in CSV, using typical value
-                'yellow_time': int(sum(yellow_times) / len(yellow_times)) if yellow_times else defaults['yellow_time'],
+                'turnaround_temp': int(sum(turnaround_temps) / len(turnaround_temps)) if turnaround_temps else defaults['turnaround_temp'],
                 'fc_start_time': int(sum(fc_start_times) / len(fc_start_times)) if fc_start_times else defaults['fc_start_time'],
                 'fc_start_temp': int(sum(fc_start_temps) / len(fc_start_temps)) if fc_start_temps else defaults['fc_start_temp'],
                 'fc_end_time': int(sum(fc_end_times) / len(fc_end_times)) if fc_end_times else defaults['fc_end_time'],
@@ -354,7 +355,7 @@ def get_all_phase_estimates(is_decaf):
         # Return defaults on any error
         return {
             'turnaround_time': 60,
-            'yellow_time': 300 if is_decaf else 330,
+            'turnaround_temp': 95 if is_decaf else 105,
             'fc_start_time': 480 if is_decaf else 540,
             'fc_start_temp': 186 if is_decaf else 192,
             'fc_end_time': 570 if is_decaf else 630,
@@ -421,8 +422,7 @@ def run_roast_session():
 
     # Display comprehensive timeline
     print(f"\n📊 EXPECTED TIMELINE (based on historical data):")
-    print(f"   Turnaround:  ~{format_time(phase_estimates['turnaround_time'])}")
-    print(f"   Yellow:      ~{format_time(phase_estimates['yellow_time'])}")
+    print(f"   Turnaround:  ~{format_time(phase_estimates['turnaround_time'])} @ {phase_estimates['turnaround_temp']}°C")
     print(f"   FC Start:    ~{format_time(phase_estimates['fc_start_time'])} @ {phase_estimates['fc_start_temp']}°C")
     print(f"   FC End:      ~{format_time(phase_estimates['fc_end_time'])} @ {phase_estimates['fc_end_temp']}°C")
     print(f"   SC Start:    ~{format_time(phase_estimates['sc_start_time'])} @ {phase_estimates['sc_start_temp']}°C")
