@@ -417,7 +417,7 @@ def run_roast_session():
 
     # Collect data right after loading (timer keeps running, just not displaying)
     session.loading_temp = input("Loading temp (°C): ").strip()
-    session.turnaround_temp = input("Turnaround temp (°C): ").strip()
+    session.turnaround_temp = input(f"Turnaround temp (expected ~{phase_estimates['turnaround_temp']}°C): ").strip()
     session.early_notes = input("Early notes (optional): ").strip()
 
     # Display comprehensive timeline
