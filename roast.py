@@ -77,6 +77,7 @@ class RoastSession:
 
         self.start_time = None
         self.loading_temp = None
+        self.turnaround_time = None
         self.turnaround_temp = None
         self.yellow_time = None
         self.fc_start_time = None
@@ -415,9 +416,8 @@ def run_roast_session():
     beep('Hero')
     print("\n🔥 ROAST STARTED! (Timer running in background)\n")
 
-    # Collect data right after loading (timer keeps running, just not displaying)
+    # Collect initial data
     session.loading_temp = input("Loading temp (°C): ").strip()
-    session.turnaround_temp = input(f"Turnaround temp (expected ~{phase_estimates['turnaround_temp']}°C): ").strip()
     session.early_notes = input("Early notes (optional): ").strip()
 
     # Display comprehensive timeline
@@ -428,7 +428,19 @@ def run_roast_session():
     print(f"   SC Start:    ~{format_time(phase_estimates['sc_start_time'])} @ {phase_estimates['sc_start_temp']}°C")
     print(f"   Drop:        ~{format_time(phase_estimates['end_time'])} @ {phase_estimates['end_temp']}°C")
 
-    print(f"\nPress ENTER when FIRST CRACK STARTS... (expected ~{format_time(phase_estimates['fc_start_time'])} @ {phase_estimates['fc_start_temp']}°C)")
+    # Wait for turnaround
+    print(f"\n⏱️  NEXT: Press ENTER at TURNAROUND (expected ~{format_time(phase_estimates['turnaround_time'])} @ {phase_estimates['turnaround_temp']}°C)")
+    input()  # User presses ENTER at turnaround
+
+    # Mark turnaround time
+    session.turnaround_time = session.elapsed()
+    clear_line()
+    print(f"\n⏱  Turnaround at {format_time(session.turnaround_time)}")
+
+    session.turnaround_temp = input("Turnaround temp (°C): ").strip()
+
+    # Show next phase
+    print(f"\n⏱️  NEXT: Press ENTER at FIRST CRACK START (expected ~{format_time(phase_estimates['fc_start_time'])} @ {phase_estimates['fc_start_temp']}°C)\n")
 
     # Run timer with milestone checks
     milestones = get_milestones(is_decaf)
@@ -493,8 +505,8 @@ def run_roast_session():
     print("="*60)
     beep('Purr')  # Alert sound for reminder
 
-    # Continue timer until first crack ENDS
-    print(f"\nWhen FIRST CRACK ENDS, press ENTER... (expected ~{format_time(phase_estimates['fc_end_time'])} @ {phase_estimates['fc_end_temp']}°C)\n")
+    # Show next phase
+    print(f"\n⏱️  NEXT: Press ENTER at FIRST CRACK END (expected ~{format_time(phase_estimates['fc_end_time'])} @ {phase_estimates['fc_end_temp']}°C)\n")
     time.sleep(1)
 
     stop_timer.clear()
@@ -532,8 +544,8 @@ def run_roast_session():
     print("\n⚠️  REMINDER: Take care of prior roast beans now!")
     beep('Purr')
 
-    # Continue timer for development - wait for second crack
-    print(f"\nPress ENTER at SECOND CRACK START (expected ~{format_time(phase_estimates['sc_start_time'])} @ {phase_estimates['sc_start_temp']}°C)\n")
+    # Show next phase
+    print(f"\n⏱️  NEXT: Press ENTER at SECOND CRACK START (expected ~{format_time(phase_estimates['sc_start_time'])} @ {phase_estimates['sc_start_temp']}°C)\n")
     time.sleep(1)
 
     stop_timer.clear()
@@ -566,8 +578,8 @@ def run_roast_session():
     print("\n🔊 SECOND CRACK STARTED")
     beep('Pop')
 
-    # Continue to drop
-    print(f"\nWhen you DROP THE BEANS, press ENTER... (expected ~{format_time(phase_estimates['end_time'])} @ {phase_estimates['end_temp']}°C)\n")
+    # Show next phase
+    print(f"\n⏱️  NEXT: Press ENTER when you DROP THE BEANS (expected ~{format_time(phase_estimates['end_time'])} @ {phase_estimates['end_temp']}°C)\n")
     time.sleep(1)
 
     stop_timer.clear()
