@@ -7,6 +7,47 @@ import os
 
 ROAST_LOG_FILE = "roast_log.csv"
 
+def calculate_roast_quality_weight(roast_level, ideal=5):
+    """
+    Calculate quality weight for a roast based on its level rating.
+    Roasts closer to the ideal rating (default 5) get higher weight.
+
+    Weight = 1 / (|roast_level - ideal| + 1)
+
+    Examples:
+    - Rating 5 (perfect): weight = 1.0
+    - Rating 4 or 6: weight = 0.5
+    - Rating 3 or 7: weight = 0.33
+    - Rating 1 or 10: weight = 0.2 or 0.167
+    """
+    if not roast_level:
+        return 0.0
+    try:
+        level = float(roast_level)
+        return 1.0 / (abs(level - ideal) + 1.0)
+    except:
+        return 0.0
+
+def weighted_average(values, weights):
+    """
+    Calculate weighted average of values.
+    Returns None if no valid values/weights.
+    """
+    if not values or not weights or len(values) != len(weights):
+        return None
+
+    # Filter out zero weights
+    valid_pairs = [(v, w) for v, w in zip(values, weights) if w > 0]
+    if not valid_pairs:
+        return None
+
+    values, weights = zip(*valid_pairs)
+    total_weight = sum(weights)
+    if total_weight == 0:
+        return None
+
+    return sum(v * w for v, w in zip(values, weights)) / total_weight
+
 def parse_time_to_seconds(time_str):
     """Convert MM:SS to seconds"""
     if not time_str or ':' not in time_str:
@@ -41,74 +82,97 @@ def get_all_phase_estimates(is_decaf, log_file=ROAST_LOG_FILE):
 
             recent_rows = rows[-5:]  # Last 5 roasts of this type
 
-            # Collect data for each phase
+            # Collect data for each phase with quality weights
             turnaround_temps = []
+            turnaround_weights = []
             fc_start_times = []
+            fc_start_time_weights = []
             fc_start_temps = []
+            fc_start_temp_weights = []
             fc_end_times = []
+            fc_end_time_weights = []
             fc_end_temps = []
+            fc_end_temp_weights = []
             sc_start_times = []
+            sc_start_time_weights = []
             sc_start_temps = []
+            sc_start_temp_weights = []
             end_times = []
+            end_time_weights = []
             end_temps = []
+            end_temp_weights = []
 
             for r in recent_rows:
-                # Turnaround temp
-                tt = parse_temp(r.get('Turnaround Temp', ''))
-                if tt:
-                    turnaround_temps.append(tt)
+                # Get quality weight for this roast
+                roast_level = r.get('Roast Level (1-10)', '')
+                weight = calculate_roast_quality_weight(roast_level)
 
-                # FC start time (try new format first, then old)
-                fct = parse_time_to_seconds(r.get('First Crack Start Time', '')) or parse_time_to_seconds(r.get('First Crack Time', ''))
-                if fct:
-                    fc_start_times.append(fct)
+                if weight > 0:
+                    # Turnaround temp
+                    tt = parse_temp(r.get('Turnaround Temp', ''))
+                    if tt:
+                        turnaround_temps.append(tt)
+                        turnaround_weights.append(weight)
 
-                # FC start temp (try new format first, then old)
-                fctemp = parse_temp(r.get('First Crack Start Temp', '')) or parse_temp(r.get('First Crack Temp', ''))
-                if fctemp:
-                    fc_start_temps.append(fctemp)
+                    # FC start time (try new format first, then old)
+                    fct = parse_time_to_seconds(r.get('First Crack Start Time', '')) or parse_time_to_seconds(r.get('First Crack Time', ''))
+                    if fct:
+                        fc_start_times.append(fct)
+                        fc_start_time_weights.append(weight)
 
-                # FC end time
-                fcet = parse_time_to_seconds(r.get('First Crack End Time', ''))
-                if fcet:
-                    fc_end_times.append(fcet)
+                    # FC start temp (try new format first, then old)
+                    fctemp = parse_temp(r.get('First Crack Start Temp', '')) or parse_temp(r.get('First Crack Temp', ''))
+                    if fctemp:
+                        fc_start_temps.append(fctemp)
+                        fc_start_temp_weights.append(weight)
 
-                # FC end temp
-                fcemp = parse_temp(r.get('First Crack End Temp', ''))
-                if fcemp:
-                    fc_end_temps.append(fcemp)
+                    # FC end time
+                    fcet = parse_time_to_seconds(r.get('First Crack End Time', ''))
+                    if fcet:
+                        fc_end_times.append(fcet)
+                        fc_end_time_weights.append(weight)
 
-                # SC start time (try new format first, then old)
-                sct = parse_time_to_seconds(r.get('Second Crack Start Time', '')) or parse_time_to_seconds(r.get('Second Crack Time', ''))
-                if sct:
-                    sc_start_times.append(sct)
+                    # FC end temp
+                    fcemp = parse_temp(r.get('First Crack End Temp', ''))
+                    if fcemp:
+                        fc_end_temps.append(fcemp)
+                        fc_end_temp_weights.append(weight)
 
-                # SC start temp (try new format first, then old)
-                sctemp = parse_temp(r.get('Second Crack Start Temp', '')) or parse_temp(r.get('Second Crack Temp', ''))
-                if sctemp:
-                    sc_start_temps.append(sctemp)
+                    # SC start time (try new format first, then old)
+                    sct = parse_time_to_seconds(r.get('Second Crack Start Time', '')) or parse_time_to_seconds(r.get('Second Crack Time', ''))
+                    if sct:
+                        sc_start_times.append(sct)
+                        sc_start_time_weights.append(weight)
 
-                # End time
-                et = parse_time_to_seconds(r.get('End Time', ''))
-                if et:
-                    end_times.append(et)
+                    # SC start temp (try new format first, then old)
+                    sctemp = parse_temp(r.get('Second Crack Start Temp', '')) or parse_temp(r.get('Second Crack Temp', ''))
+                    if sctemp:
+                        sc_start_temps.append(sctemp)
+                        sc_start_temp_weights.append(weight)
 
-                # End temp
-                etemp = parse_temp(r.get('End Temp', ''))
-                if etemp:
-                    end_temps.append(etemp)
+                    # End time
+                    et = parse_time_to_seconds(r.get('End Time', ''))
+                    if et:
+                        end_times.append(et)
+                        end_time_weights.append(weight)
+
+                    # End temp
+                    etemp = parse_temp(r.get('End Temp', ''))
+                    if etemp:
+                        end_temps.append(etemp)
+                        end_temp_weights.append(weight)
 
             return {
                 'num_roasts': len(recent_rows),
-                'turnaround_temp': sum(turnaround_temps) / len(turnaround_temps) if turnaround_temps else None,
-                'fc_start_time': sum(fc_start_times) / len(fc_start_times) if fc_start_times else None,
-                'fc_start_temp': sum(fc_start_temps) / len(fc_start_temps) if fc_start_temps else None,
-                'fc_end_time': sum(fc_end_times) / len(fc_end_times) if fc_end_times else None,
-                'fc_end_temp': sum(fc_end_temps) / len(fc_end_temps) if fc_end_temps else None,
-                'sc_start_time': sum(sc_start_times) / len(sc_start_times) if sc_start_times else None,
-                'sc_start_temp': sum(sc_start_temps) / len(sc_start_temps) if sc_start_temps else None,
-                'end_time': sum(end_times) / len(end_times) if end_times else None,
-                'end_temp': sum(end_temps) / len(end_temps) if end_temps else None,
+                'turnaround_temp': weighted_average(turnaround_temps, turnaround_weights),
+                'fc_start_time': weighted_average(fc_start_times, fc_start_time_weights),
+                'fc_start_temp': weighted_average(fc_start_temps, fc_start_temp_weights),
+                'fc_end_time': weighted_average(fc_end_times, fc_end_time_weights),
+                'fc_end_temp': weighted_average(fc_end_temps, fc_end_temp_weights),
+                'sc_start_time': weighted_average(sc_start_times, sc_start_time_weights),
+                'sc_start_temp': weighted_average(sc_start_temps, sc_start_temp_weights),
+                'end_time': weighted_average(end_times, end_time_weights),
+                'end_temp': weighted_average(end_temps, end_temp_weights),
                 'raw_data': {
                     'fc_start_times': fc_start_times,
                     'fc_start_temps': fc_start_temps,
