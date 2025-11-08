@@ -48,6 +48,47 @@ def parse_temp_ror(input_str):
     else:
         return input_str, None
 
+def calculate_roast_quality_weight(roast_level, ideal=5):
+    """
+    Calculate quality weight for a roast based on its level rating.
+    Roasts closer to the ideal rating (default 5) get higher weight.
+
+    Weight = 1 / (|roast_level - ideal| + 1)
+
+    Examples:
+    - Rating 5 (perfect): weight = 1.0
+    - Rating 4 or 6: weight = 0.5
+    - Rating 3 or 7: weight = 0.33
+    - Rating 1 or 10: weight = 0.2 or 0.167
+    """
+    if not roast_level:
+        return 0.0
+    try:
+        level = float(roast_level)
+        return 1.0 / (abs(level - ideal) + 1.0)
+    except:
+        return 0.0
+
+def weighted_average(values, weights):
+    """
+    Calculate weighted average of values.
+    Returns None if no valid values/weights.
+    """
+    if not values or not weights or len(values) != len(weights):
+        return None
+
+    # Filter out zero weights
+    valid_pairs = [(v, w) for v, w in zip(values, weights) if w > 0]
+    if not valid_pairs:
+        return None
+
+    values, weights = zip(*valid_pairs)
+    total_weight = sum(weights)
+    if total_weight == 0:
+        return None
+
+    return sum(v * w for v, w in zip(values, weights)) / total_weight
+
 def beep(sound='Ping'):
     """Make alert sound with different sounds for different phases"""
     import subprocess
@@ -126,7 +167,7 @@ class RoastSession:
         self.drop_temp = drop_temp
 
 def get_fc_midpoint_temp(is_decaf):
-    """Calculate FC midpoint temp from historical data"""
+    """Calculate FC midpoint temp from historical data using quality-weighted averaging"""
     if not os.path.exists(ROAST_LOG_FILE):
         # Default values if no history
         return 186 if is_decaf else 192
@@ -139,37 +180,51 @@ def get_fc_midpoint_temp(is_decaf):
             if not rows:
                 return 186 if is_decaf else 192
 
-            # Get FC start and end temps from recent roasts
+            # Get FC start and end temps from recent roasts with quality weights
             fc_starts = []
             fc_ends = []
+            weights = []
             for r in rows[-5:]:  # Last 5 roasts of this type
                 fc_start = r.get('First Crack Start Temp') or r.get('First Crack Temp', '')
                 fc_end = r.get('First Crack End Temp', '')
-                if fc_start:
+                roast_level = r.get('Roast Level (1-10)', '')
+
+                # Calculate quality weight for this roast
+                weight = calculate_roast_quality_weight(roast_level)
+
+                if fc_start and weight > 0:
                     try:
                         fc_starts.append(float(fc_start))
-                    except:
-                        pass
-                if fc_end:
-                    try:
-                        fc_ends.append(float(fc_end))
+                        if fc_end:
+                            fc_ends.append(float(fc_end))
+                        else:
+                            fc_ends.append(None)
+                        weights.append(weight)
                     except:
                         pass
 
-            if fc_starts and fc_ends:
-                avg_start = sum(fc_starts) / len(fc_starts)
-                avg_end = sum(fc_ends) / len(fc_ends)
-                return int((avg_start + avg_end) / 2)
-            elif fc_starts:
-                # If we only have start temps, add ~8°C for estimated midpoint
-                return int(sum(fc_starts) / len(fc_starts) + 4)
-            else:
-                return 186 if is_decaf else 192
+            # Calculate weighted averages
+            if fc_starts and weights:
+                avg_start = weighted_average(fc_starts, weights)
+                # For ends, only use pairs where we have both start and end
+                valid_ends = [e for e in fc_ends if e is not None]
+                valid_end_weights = [w for e, w in zip(fc_ends, weights) if e is not None]
+
+                if valid_ends and valid_end_weights and avg_start is not None:
+                    avg_end = weighted_average(valid_ends, valid_end_weights)
+                    if avg_end is not None:
+                        return int((avg_start + avg_end) / 2)
+
+                # If we only have start temps, add ~4°C for estimated midpoint
+                if avg_start is not None:
+                    return int(avg_start + 4)
+
+            return 186 if is_decaf else 192
     except:
         return 186 if is_decaf else 192
 
 def get_fc_start_estimates(is_decaf):
-    """Get estimated FC start time and temp from historical data"""
+    """Get estimated FC start time and temp from historical data using quality-weighted averaging"""
     if not os.path.exists(ROAST_LOG_FILE):
         # Default values if no history
         default_time = 480 if is_decaf else 540  # 8:00 for decaf, 9:00 for regular
@@ -186,32 +241,45 @@ def get_fc_start_estimates(is_decaf):
                 default_temp = 186 if is_decaf else 192
                 return default_time, default_temp
 
-            # Get FC start times and temps from recent roasts (handle old and new formats)
+            # Get FC start times and temps from recent roasts with quality weights
             fc_start_times = []
             fc_start_temps = []
+            time_weights = []
+            temp_weights = []
+
             for r in rows[-5:]:  # Last 5 roasts of this type
+                roast_level = r.get('Roast Level (1-10)', '')
+                weight = calculate_roast_quality_weight(roast_level)
+
                 # Try new format first, then old format
                 fc_start_time = r.get('First Crack Start Time', '') or r.get('First Crack Time', '')
-                if fc_start_time and ':' in fc_start_time:
+                if fc_start_time and ':' in fc_start_time and weight > 0:
                     try:
                         parts = fc_start_time.split(':')
                         seconds = int(parts[0]) * 60 + int(parts[1])
                         fc_start_times.append(seconds)
+                        time_weights.append(weight)
                     except:
                         pass
 
                 # Try new format first, then old format
                 fc_start_temp = r.get('First Crack Start Temp', '') or r.get('First Crack Temp', '')
-                if fc_start_temp:
+                if fc_start_temp and weight > 0:
                     try:
                         fc_start_temps.append(float(fc_start_temp))
+                        temp_weights.append(weight)
                     except:
                         pass
 
-            avg_time = int(sum(fc_start_times) / len(fc_start_times)) if fc_start_times else (480 if is_decaf else 540)
-            avg_temp = int(sum(fc_start_temps) / len(fc_start_temps)) if fc_start_temps else (186 if is_decaf else 192)
+            # Calculate weighted averages
+            avg_time = weighted_average(fc_start_times, time_weights)
+            avg_temp = weighted_average(fc_start_temps, temp_weights)
 
-            return avg_time, avg_temp
+            # Use weighted averages if available, otherwise fall back to defaults
+            final_time = int(avg_time) if avg_time is not None else (480 if is_decaf else 540)
+            final_temp = int(avg_temp) if avg_temp is not None else (186 if is_decaf else 192)
+
+            return final_time, final_temp
     except:
         default_time = 480 if is_decaf else 540
         default_temp = 186 if is_decaf else 192
@@ -269,64 +337,87 @@ def get_all_phase_estimates(is_decaf):
                 except:
                     return None
 
-            # Collect data for each phase (handle both old and new column formats)
+            # Collect data for each phase with quality weights (handle both old and new column formats)
             turnaround_temps = []
+            turnaround_weights = []
             fc_start_times = []
+            fc_start_time_weights = []
             fc_start_temps = []
+            fc_start_temp_weights = []
             fc_end_times = []
+            fc_end_time_weights = []
             fc_end_temps = []
+            fc_end_temp_weights = []
             sc_start_times = []
+            sc_start_time_weights = []
             sc_start_temps = []
+            sc_start_temp_weights = []
             end_times = []
+            end_time_weights = []
             end_temps = []
+            end_temp_weights = []
 
             for r in recent_rows:
-                # Turnaround temp
-                tt = parse_temp(r.get('Turnaround Temp', ''))
-                if tt:
-                    turnaround_temps.append(tt)
+                # Get quality weight for this roast
+                roast_level = r.get('Roast Level (1-10)', '')
+                weight = calculate_roast_quality_weight(roast_level)
 
-                # FC start time (try new format first, then old)
-                fct = parse_time_to_seconds(r.get('First Crack Start Time', '')) or parse_time_to_seconds(r.get('First Crack Time', ''))
-                if fct:
-                    fc_start_times.append(fct)
+                if weight > 0:
+                    # Turnaround temp
+                    tt = parse_temp(r.get('Turnaround Temp', ''))
+                    if tt:
+                        turnaround_temps.append(tt)
+                        turnaround_weights.append(weight)
 
-                # FC start temp (try new format first, then old)
-                fctemp = parse_temp(r.get('First Crack Start Temp', '')) or parse_temp(r.get('First Crack Temp', ''))
-                if fctemp:
-                    fc_start_temps.append(fctemp)
+                    # FC start time (try new format first, then old)
+                    fct = parse_time_to_seconds(r.get('First Crack Start Time', '')) or parse_time_to_seconds(r.get('First Crack Time', ''))
+                    if fct:
+                        fc_start_times.append(fct)
+                        fc_start_time_weights.append(weight)
 
-                # FC end time
-                fcet = parse_time_to_seconds(r.get('First Crack End Time', ''))
-                if fcet:
-                    fc_end_times.append(fcet)
+                    # FC start temp (try new format first, then old)
+                    fctemp = parse_temp(r.get('First Crack Start Temp', '')) or parse_temp(r.get('First Crack Temp', ''))
+                    if fctemp:
+                        fc_start_temps.append(fctemp)
+                        fc_start_temp_weights.append(weight)
 
-                # FC end temp
-                fcemp = parse_temp(r.get('First Crack End Temp', ''))
-                if fcemp:
-                    fc_end_temps.append(fcemp)
+                    # FC end time
+                    fcet = parse_time_to_seconds(r.get('First Crack End Time', ''))
+                    if fcet:
+                        fc_end_times.append(fcet)
+                        fc_end_time_weights.append(weight)
 
-                # SC start time (try new format first, then old)
-                sct = parse_time_to_seconds(r.get('Second Crack Start Time', '')) or parse_time_to_seconds(r.get('Second Crack Time', ''))
-                if sct:
-                    sc_start_times.append(sct)
+                    # FC end temp
+                    fcemp = parse_temp(r.get('First Crack End Temp', ''))
+                    if fcemp:
+                        fc_end_temps.append(fcemp)
+                        fc_end_temp_weights.append(weight)
 
-                # SC start temp (try new format first, then old)
-                sctemp = parse_temp(r.get('Second Crack Start Temp', '')) or parse_temp(r.get('Second Crack Temp', ''))
-                if sctemp:
-                    sc_start_temps.append(sctemp)
+                    # SC start time (try new format first, then old)
+                    sct = parse_time_to_seconds(r.get('Second Crack Start Time', '')) or parse_time_to_seconds(r.get('Second Crack Time', ''))
+                    if sct:
+                        sc_start_times.append(sct)
+                        sc_start_time_weights.append(weight)
 
-                # End time
-                et = parse_time_to_seconds(r.get('End Time', ''))
-                if et:
-                    end_times.append(et)
+                    # SC start temp (try new format first, then old)
+                    sctemp = parse_temp(r.get('Second Crack Start Temp', '')) or parse_temp(r.get('Second Crack Temp', ''))
+                    if sctemp:
+                        sc_start_temps.append(sctemp)
+                        sc_start_temp_weights.append(weight)
 
-                # End temp
-                etemp = parse_temp(r.get('End Temp', ''))
-                if etemp:
-                    end_temps.append(etemp)
+                    # End time
+                    et = parse_time_to_seconds(r.get('End Time', ''))
+                    if et:
+                        end_times.append(et)
+                        end_time_weights.append(weight)
 
-            # Calculate averages, falling back to defaults
+                    # End temp
+                    etemp = parse_temp(r.get('End Temp', ''))
+                    if etemp:
+                        end_temps.append(etemp)
+                        end_temp_weights.append(weight)
+
+            # Calculate weighted averages, falling back to defaults
             defaults = {
                 'turnaround_time': 60,  # Typical turnaround ~1:00
                 'turnaround_temp': 95 if is_decaf else 105,
@@ -340,17 +431,22 @@ def get_all_phase_estimates(is_decaf):
                 'end_temp': 212 if is_decaf else 218
             }
 
+            # Helper to get weighted avg or default
+            def get_avg_or_default(values, weights, default):
+                avg = weighted_average(values, weights)
+                return int(avg) if avg is not None else default
+
             return {
                 'turnaround_time': 60,  # Not tracked in CSV, using typical value
-                'turnaround_temp': int(sum(turnaround_temps) / len(turnaround_temps)) if turnaround_temps else defaults['turnaround_temp'],
-                'fc_start_time': int(sum(fc_start_times) / len(fc_start_times)) if fc_start_times else defaults['fc_start_time'],
-                'fc_start_temp': int(sum(fc_start_temps) / len(fc_start_temps)) if fc_start_temps else defaults['fc_start_temp'],
-                'fc_end_time': int(sum(fc_end_times) / len(fc_end_times)) if fc_end_times else defaults['fc_end_time'],
-                'fc_end_temp': int(sum(fc_end_temps) / len(fc_end_temps)) if fc_end_temps else defaults['fc_end_temp'],
-                'sc_start_time': int(sum(sc_start_times) / len(sc_start_times)) if sc_start_times else defaults['sc_start_time'],
-                'sc_start_temp': int(sum(sc_start_temps) / len(sc_start_temps)) if sc_start_temps else defaults['sc_start_temp'],
-                'end_time': int(sum(end_times) / len(end_times)) if end_times else defaults['end_time'],
-                'end_temp': int(sum(end_temps) / len(end_temps)) if end_temps else defaults['end_temp']
+                'turnaround_temp': get_avg_or_default(turnaround_temps, turnaround_weights, defaults['turnaround_temp']),
+                'fc_start_time': get_avg_or_default(fc_start_times, fc_start_time_weights, defaults['fc_start_time']),
+                'fc_start_temp': get_avg_or_default(fc_start_temps, fc_start_temp_weights, defaults['fc_start_temp']),
+                'fc_end_time': get_avg_or_default(fc_end_times, fc_end_time_weights, defaults['fc_end_time']),
+                'fc_end_temp': get_avg_or_default(fc_end_temps, fc_end_temp_weights, defaults['fc_end_temp']),
+                'sc_start_time': get_avg_or_default(sc_start_times, sc_start_time_weights, defaults['sc_start_time']),
+                'sc_start_temp': get_avg_or_default(sc_start_temps, sc_start_temp_weights, defaults['sc_start_temp']),
+                'end_time': get_avg_or_default(end_times, end_time_weights, defaults['end_time']),
+                'end_temp': get_avg_or_default(end_temps, end_temp_weights, defaults['end_temp'])
             }
     except:
         # Return defaults on any error
