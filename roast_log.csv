@@ -1,3 +1,5 @@
 Date,Time,Bean Origin,Decaf,Batch Size (lbs),Loading Temp,Turnaround Temp,Early Notes,Yellow Time,First Crack Start Time,First Crack Start Temp,FC Start ROR,First Crack End Time,First Crack End Temp,FC End ROR,Second Crack Start Time,Second Crack Start Temp,SC Start ROR,End Time,End Temp,Drop Temp,Total Roast Time (min),Target Roast Level,Roast Level (1-10),Notes,Tasting Notes (added later)
 2025-11-07,15:06,Colombian,Yes,1,200,95,power/far reversed til turnaround (slow start),,07:33,183,13,08:29,196,12,11:37,212,5,12:52,215,,12.9,Medium-Dark,5,good,
 2025-11-07,15:20,Colombian,Yes,1,201,107,,,07:06,190,13,08:44,203,8,11:31,217,4,12:28,220,,12.5,Medium-Dark,8,bit slow on the tagging,
+2025-11-07,15:54,Colombian,Yes,1,207,111,,,06:52,189,14,08:12,202,8,11:02,216,5,13:10,222,,13.2,Medium-Dark,7,,
+2025-11-07,16:05,Colombian,No,1,223,113,,,06:39,196,15,07:50,212,13,08:32,225,13,09:14,233,,9.2,Medium-Dark,7,,
